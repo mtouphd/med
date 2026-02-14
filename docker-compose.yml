@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: medapp_db
+    environment:
+      POSTGRES_USER: medapp
+      POSTGRES_PASSWORD: medapp_secret
+      POSTGRES_DB: medapp
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medapp -d medapp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: medapp_backend
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: medapp
+      DATABASE_PASSWORD: medapp_secret
+      DATABASE_NAME: medapp
+      JWT_SECRET: medapp_jwt_secret_key_2024
+      JWT_EXPIRES_IN: 7d
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: medapp_network

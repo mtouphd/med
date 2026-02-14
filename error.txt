@@ -1,0 +1,29 @@
+
+src/auth/auth.service.ts:6:32 - error TS2307: Cannot find module '../../users/entities/user.entity' or its corresponding type declarations.
+
+6 import { User, UserRole } from '../../users/entities/user.entity';
+                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/auth/auth.service.ts:7:39 - error TS2307: Cannot find module '../dto/auth.dto' or its corresponding type declarations.
+
+7 import { RegisterDto, LoginDto } from '../dto/auth.dto';
+                                        ~~~~~~~~~~~~~~~~~
+
+src/auth/auth.service.ts:8:24 - error TS2307: Cannot find module '../../doctors/entities/doctor.entity' or its corresponding type declarations.
+
+8 import { Doctor } from '../../doctors/entities/doctor.entity';
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/auth/auth.service.ts:9:25 - error TS2307: Cannot find module '../../patients/entities/patient.entity' or its corresponding type declarations.
+
+9 import { Patient } from '../../patients/entities/patient.entity';
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/users/entities/user.entity.ts:3:29 - error TS2307: Cannot find module '../appointments/entities/appointment.entity' or its corresponding type declarations.
+
+3 import { Appointment } from '../appointments/entities/appointment.entity';
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/users/entities/user.entity.ts:48:62 - error TS2339: Property 'patient' does not exist on type 'unknown'.
+
+48   @OneToMany(() => Appointment, (appointment) => appointment.patient)
