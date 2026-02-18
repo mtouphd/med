@@ -1,0 +1,15 @@
+meta {
+  name: patiens list
+  type: http
+  seq: 4
+}
+
+get {
+  url: http://localhost:3001/patients
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJlbWFpbCI6ImFkbWluQG1lZGFwcC5jb20iLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3NzEzNTU1NTEsImV4cCI6MTc3MTk2MDM1MX0.aB5DwY3Q7IAmz5l5ejBnJwSVCWRTCamXfsXnxv_H06Y
+}

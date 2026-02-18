@@ -6,6 +6,7 @@ import { Patient } from '../../patients/entities/patient.entity';
 export enum AppointmentStatus {
   PENDING = 'PENDING',
   CONFIRMED = 'CONFIRMED',
+  REJECTED = 'REJECTED',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
 }
@@ -50,6 +51,46 @@ export class Appointment {
 
   @Column({ type: 'text', nullable: true })
   medications: string;
+
+  // ========== WORKFLOW D'APPROBATION ==========
+  @Column({ default: false })
+  doctorApproved: boolean;
+
+  @Column({ default: false })
+  adminApproved: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  doctorApprovedAt: Date;
+
+  @Column({ nullable: true })
+  doctorApprovedBy: string;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'doctorApprovedBy' })
+  doctorApprover: User;
+
+  @Column({ type: 'timestamp', nullable: true })
+  adminApprovedAt: Date;
+
+  @Column({ nullable: true })
+  adminApprovedBy: string;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'adminApprovedBy' })
+  adminApprover: User;
+
+  @Column({ type: 'text', nullable: true })
+  doctorRejectionReason: string;
+
+  @Column({ type: 'text', nullable: true })
+  adminRejectionReason: string;
+
+  @Column({ nullable: true })
+  requestedBy: string;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'requestedBy' })
+  requester: User;
 
   @CreateDateColumn()
   createdAt: Date;

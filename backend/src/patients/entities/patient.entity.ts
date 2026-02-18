@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, OneToOne, ManyToOne, OneToMany, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
 @Entity('patients')
@@ -22,6 +22,27 @@ export class Patient {
   @Column({ nullable: true })
   emergencyContact: string;
 
-  @Column({ type: 'text', nullable: true })
-  medicalHistory: string;
+  // ========== MÉDECIN DE FAMILLE ==========
+  @Column({ nullable: true })
+  familyDoctorId: string;
+
+  @ManyToOne('Doctor', 'familyPatients', { nullable: true })
+  @JoinColumn({ name: 'familyDoctorId' })
+  familyDoctor: any; // Type will be Doctor, using any to avoid circular dependency
+
+  @Column({ type: 'timestamp', nullable: true })
+  familyDoctorAssignedAt: Date;
+
+  // ========== RELATIONS ==========
+  @OneToOne('MedicalRecord', 'patient', { cascade: true })
+  medicalRecord: any; // Type will be MedicalRecord
+
+  @OneToMany('Appointment', 'patient')
+  appointments: any[]; // Type will be Appointment[]
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

@@ -13,6 +13,11 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     transform: true,
+    exceptionFactory: (errors) => {
+      console.log('=== VALIDATION ERRORS ===');
+      console.log(JSON.stringify(errors, null, 2));
+      return new ValidationPipe().createExceptionFactory()(errors);
+    },
   }));
   
   const port = process.env.PORT || 3001;

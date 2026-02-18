@@ -5,6 +5,10 @@ export class CreateAppointmentDto {
   @IsString()
   doctorId: string;
 
+  @IsOptional()
+  @IsString()
+  patientId?: string;
+
   @IsDateString()
   dateTime: string;
 
@@ -15,6 +19,10 @@ export class CreateAppointmentDto {
   @IsOptional()
   @IsString()
   reason?: string;
+
+  @IsOptional()
+  @IsEnum(AppointmentStatus)
+  status?: AppointmentStatus;
 }
 
 export class UpdateAppointmentDto {

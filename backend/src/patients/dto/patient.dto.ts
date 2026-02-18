@@ -1,8 +1,37 @@
-import { IsString, IsOptional, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsObject, ValidateNested, IsEmail } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class CreateUserDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  password: string;
+
+  @IsString()
+  firstName: string;
+
+  @IsString()
+  lastName: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsString()
+  role: string;
+}
 
 export class CreatePatientDto {
+  @IsOptional()
   @IsString()
-  userId: string;
+  userId?: string;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => CreateUserDto)
+  user?: CreateUserDto;
 
   @IsOptional()
   @IsDateString()
@@ -15,10 +44,6 @@ export class CreatePatientDto {
   @IsOptional()
   @IsString()
   emergencyContact?: string;
-
-  @IsOptional()
-  @IsString()
-  medicalHistory?: string;
 }
 
 export class UpdatePatientDto {
@@ -33,8 +58,4 @@ export class UpdatePatientDto {
   @IsOptional()
   @IsString()
   emergencyContact?: string;
-
-  @IsOptional()
-  @IsString()
-  medicalHistory?: string;
 }

@@ -6,6 +6,9 @@ import { UsersModule } from './users/users.module';
 import { DoctorsModule } from './doctors/doctors.module';
 import { PatientsModule } from './patients/patients.module';
 import { AppointmentsModule } from './appointments/appointments.module';
+import { MedicalRecordsModule } from './medical-records/medical-records.module';
+import { HistoryModule } from './history/history.module';
+import { FamilyDoctorRequestsModule } from './family-doctor-requests/family-doctor-requests.module';
 
 @Module({
   imports: [
@@ -33,6 +36,9 @@ import { AppointmentsModule } from './appointments/appointments.module';
     DoctorsModule,
     PatientsModule,
     AppointmentsModule,
+    MedicalRecordsModule,
+    HistoryModule,
+    FamilyDoctorRequestsModule,
   ],
 })
 export class AppModule {}

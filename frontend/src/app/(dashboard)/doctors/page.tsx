@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doctors, appointments } from '@/lib/api';
-import { Doctor, Appointment, UserRole, AvailabilityCheck } from '@/types';
+import { doctors, appointments, familyDoctorRequests, patients } from '@/lib/api';
+import { Doctor, Appointment, UserRole, AvailabilityCheck, FamilyDoctorRequest, FamilyDoctorRequestStatus, Patient } from '@/types';
 import { useAuth } from '@/lib/auth-context';
+import Badge from '@/components/ui/Badge';
+import { Users, Calendar, Heart } from 'lucide-react';
 
 export default function DoctorsPage() {
   const { user } = useAuth();
@@ -16,10 +18,19 @@ export default function DoctorsPage() {
   const [error, setError] = useState('');
   const [availability, setAvailability] = useState<AvailabilityCheck | null>(null);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [myRequests, setMyRequests] = useState<FamilyDoctorRequest[]>([]);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestDoctor, setRequestDoctor] = useState<Doctor | null>(null);
+  const [requestReason, setRequestReason] = useState('');
+  const [currentPatient, setCurrentPatient] = useState<Patient | null>(null);
 
   useEffect(() => {
     loadDoctors();
-  }, []);
+    if (user?.role === UserRole.PATIENT) {
+      loadMyRequests();
+      loadCurrentPatient();
+    }
+  }, [user]);
 
   const loadDoctors = async () => {
     try {
@@ -27,6 +38,24 @@ export default function DoctorsPage() {
       setDoctorsList(res.data.filter((d: Doctor) => d.isAvailable));
     } catch (err) {
       console.error('Error loading doctors:', err);
+    }
+  };
+
+  const loadMyRequests = async () => {
+    try {
+      const res = await familyDoctorRequests.getMy();
+      setMyRequests(res.data);
+    } catch (err) {
+      console.error('Error loading requests:', err);
+    }
+  };
+
+  const loadCurrentPatient = async () => {
+    try {
+      const res = await patients.getMyProfile();
+      setCurrentPatient(res.data);
+    } catch (err) {
+      console.error('Error loading patient profile:', err);
     }
   };
 
@@ -101,13 +130,110 @@ export default function DoctorsPage() {
     setMessage('');
   };
 
+  const handleRequestFamilyDoctor = async (doctor: Doctor) => {
+    // Check if already has pending request for this doctor
+    const hasPendingRequest = myRequests.some(
+      (req) =>
+        req.doctorId === doctor.id &&
+        req.status === FamilyDoctorRequestStatus.PENDING
+    );
+
+    if (hasPendingRequest) {
+      setError('You already have a pending request for this doctor');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+
+    // Check if this doctor is already the family doctor
+    if (currentPatient?.familyDoctorId === doctor.id) {
+      setError('This doctor is already your family doctor');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+
+    setRequestDoctor(doctor);
+    setShowRequestModal(true);
+  };
+
+  const submitFamilyDoctorRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!requestDoctor) return;
+
+    try {
+      await familyDoctorRequests.create({
+        doctorId: requestDoctor.id,
+        requestReason: requestReason,
+      });
+      setMessage('Family doctor request submitted successfully!');
+      setShowRequestModal(false);
+      setRequestDoctor(null);
+      setRequestReason('');
+      await loadMyRequests();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to submit request');
+    }
+  };
+
+  const getRequestStatus = (doctorId: string) => {
+    const request = myRequests.find((r) => r.doctorId === doctorId);
+    return request;
+  };
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Doctors</h1>
-      <p className="text-gray-500 mb-8">Find and book appointments with our doctors</p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Doctors</h1>
+        <p className="text-gray-500">Find and book appointments with our doctors</p>
+      </div>
 
       {message && (
-        <div className="bg-green-50 text-green-600 p-4 rounded-lg mb-6">{message}</div>
+        <div className="bg-green-50 text-green-600 p-4 rounded-lg">{message}</div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 text-red-600 p-4 rounded-lg">{error}</div>
+      )}
+
+      {/* My Family Doctor Requests Section - Only for Patients */}
+      {user?.role === UserRole.PATIENT && myRequests.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Heart className="text-primary-600" size={20} />
+            <h2 className="text-lg font-semibold text-gray-900">My Family Doctor Requests</h2>
+          </div>
+          <div className="space-y-3">
+            {myRequests.map((request) => (
+              <div
+                key={request.id}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200"
+              >
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900">
+                    Dr. {request.doctor?.user.firstName} {request.doctor?.user.lastName}
+                  </p>
+                  <p className="text-sm text-gray-600">{request.doctor?.specialty}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Requested: {new Date(request.requestedAt).toLocaleDateString()}
+                  </p>
+                  {request.responseReason && request.status !== FamilyDoctorRequestStatus.PENDING && (
+                    <p className="text-sm text-gray-700 mt-2 italic">{request.responseReason}</p>
+                  )}
+                </div>
+                <Badge
+                  variant={
+                    request.status === FamilyDoctorRequestStatus.APPROVED
+                      ? 'success'
+                      : request.status === FamilyDoctorRequestStatus.REJECTED
+                      ? 'danger'
+                      : 'warning'
+                  }
+                >
+                  {request.status}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -135,25 +261,119 @@ export default function DoctorsPage() {
               <p className="text-sm text-gray-600 mb-4 line-clamp-3">{doctor.bio}</p>
             )}
 
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-500">
-                {doctor.consultationDuration} min consultation
-              </span>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">
+                  {doctor.consultationDuration} min consultation
+                </span>
+              </div>
+
               {user?.role === UserRole.PATIENT && (
-                <button
-                  onClick={() => setSelectedDoctor(doctor)}
-                  className="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors"
-                >
-                  Book Now
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setSelectedDoctor(doctor)}
+                    className="flex-1 flex items-center justify-center gap-2 bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors text-sm"
+                  >
+                    <Calendar size={16} />
+                    Book Now
+                  </button>
+                  {(() => {
+                    const requestStatus = getRequestStatus(doctor.id);
+                    const isCurrentFamilyDoctor = currentPatient?.familyDoctorId === doctor.id;
+
+                    if (isCurrentFamilyDoctor) {
+                      return (
+                        <div className="flex-1 flex items-center justify-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-lg border border-green-200 text-sm">
+                          <Heart size={16} className="fill-current" />
+                          My Doctor
+                        </div>
+                      );
+                    } else if (requestStatus) {
+                      return (
+                        <Badge
+                          variant={
+                            requestStatus.status === FamilyDoctorRequestStatus.APPROVED
+                              ? 'success'
+                              : requestStatus.status === FamilyDoctorRequestStatus.REJECTED
+                              ? 'danger'
+                              : 'warning'
+                          }
+                          className="flex-1"
+                        >
+                          {requestStatus.status}
+                        </Badge>
+                      );
+                    } else {
+                      return (
+                        <button
+                          onClick={() => handleRequestFamilyDoctor(doctor)}
+                          className="flex-1 flex items-center justify-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-lg hover:bg-purple-100 transition-colors border border-purple-200 text-sm"
+                        >
+                          <Users size={16} />
+                          Request
+                        </button>
+                      );
+                    }
+                  })()}
+                </div>
               )}
             </div>
           </div>
         ))}
       </div>
 
+      {/* Family Doctor Request Modal */}
+      {showRequestModal && requestDoctor && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white p-6 rounded-xl w-full max-w-md">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              Request Dr. {requestDoctor.user.firstName} {requestDoctor.user.lastName} as Family Doctor
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Your family doctor will have ongoing access to your medical records and can provide continuous care.
+            </p>
+
+            <form onSubmit={submitFamilyDoctorRequest} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Reason for Request (Optional)
+                </label>
+                <textarea
+                  value={requestReason}
+                  onChange={(e) => setRequestReason(e.target.value)}
+                  className="w-full p-3 border border-gray-200 rounded-lg"
+                  rows={3}
+                  placeholder="Why would you like this doctor as your family doctor?"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRequestModal(false);
+                    setRequestDoctor(null);
+                    setRequestReason('');
+                  }}
+                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-primary-500 text-white py-3 rounded-lg hover:bg-primary-600 transition-colors"
+                >
+                  Submit Request
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Book Appointment Modal */}
       {selectedDoctor && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white p-6 rounded-xl w-full max-w-md">
             <h2 className="text-xl font-bold text-gray-900 mb-4">
               Book with Dr. {selectedDoctor.user.firstName} {selectedDoctor.user.lastName}

@@ -1,0 +1,31 @@
+meta {
+  name: add patient
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:3001/patients
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "user": {
+      "email": "test.patient@example.com",
+      "password": "password123",
+      "firstName": "Jean",
+      "lastName": "Dupont",
+      "phone": "+33612345678",
+      "role": "PATIENT"
+    },
+    "dateOfBirth": "1990-05-15",
+    "address": "123 Rue de Paris, 75001 Paris",
+    "emergencyContact": "Marie Dupont - +33687654321"
+  }
+}

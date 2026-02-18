@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Request, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Patch, Param, Body, UseGuards, Request, Query } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AppointmentsService } from './appointments.service';
 import { CreateAppointmentDto, UpdateAppointmentDto } from './dto/appointment.dto';
+import { RejectAppointmentDto } from './dto/reject-appointment.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { UserRole } from '../users/entities/user.entity';
@@ -67,9 +68,9 @@ export class AppointmentsController {
   }
 
   @Post()
-  @Roles(UserRole.PATIENT, UserRole.ADMIN)
+  @Roles(UserRole.PATIENT, UserRole.ADMIN, UserRole.DOCTOR)
   create(@Body() createAppointmentDto: CreateAppointmentDto, @Request() req) {
-    return this.appointmentsService.create(createAppointmentDto, req.user.id);
+    return this.appointmentsService.create(createAppointmentDto, req.user.id, req.user.role);
   }
 
   @Put(':id')
@@ -129,8 +130,111 @@ export class AppointmentsController {
   }
 
   @Put(':id/cancel')
-  @Roles(UserRole.DOCTOR, UserRole.ADMIN)
+  @Roles(UserRole.DOCTOR, UserRole.ADMIN, UserRole.PATIENT)
   cancelAppointment(@Param('id') id: string) {
     return this.appointmentsService.cancelAppointment(id);
+  }
+
+  // ==================== WORKFLOW D'APPROBATION (BR-W-001, BR-W-002, BR-W-003) ====================
+
+  /**
+   * BR-W-001: Récupérer tous les rendez-vous en attente d'approbation
+   * GET /appointments/pending
+   * Admin peut voir tous, Médecin voit seulement les siens
+   */
+  @Get('pending/all')
+  @Roles(UserRole.ADMIN)
+  async getAllPendingAppointments() {
+    return this.appointmentsService.getPendingAppointments();
+  }
+
+  /**
+   * Récupérer les rendez-vous en attente pour le médecin connecté
+   * GET /appointments/pending/doctor
+   */
+  @Get('pending/doctor')
+  @Roles(UserRole.DOCTOR)
+  async getMyPendingAppointments(@Request() req) {
+    const doctor = await this.doctorsRepository.findOne({
+      where: { userId: req.user.id },
+    });
+
+    if (!doctor) {
+      return [];
+    }
+
+    return this.appointmentsService.getDoctorPendingAppointments(doctor.id);
+  }
+
+  /**
+   * BR-W-002: Approbation par le médecin
+   * PATCH /appointments/:id/approve/doctor
+   */
+  @Patch(':id/approve/doctor')
+  @Roles(UserRole.DOCTOR)
+  async approveByDoctor(@Param('id') appointmentId: string, @Request() req) {
+    const doctor = await this.doctorsRepository.findOne({
+      where: { userId: req.user.id },
+    });
+
+    if (!doctor) {
+      throw new Error('Doctor profile not found');
+    }
+
+    return this.appointmentsService.approveByDoctor(appointmentId, doctor.id);
+  }
+
+  /**
+   * BR-W-002: Rejet par le médecin
+   * PATCH /appointments/:id/reject/doctor
+   */
+  @Patch(':id/reject/doctor')
+  @Roles(UserRole.DOCTOR)
+  async rejectByDoctor(
+    @Param('id') appointmentId: string,
+    @Body() rejectDto: RejectAppointmentDto,
+    @Request() req,
+  ) {
+    const doctor = await this.doctorsRepository.findOne({
+      where: { userId: req.user.id },
+    });
+
+    if (!doctor) {
+      throw new Error('Doctor profile not found');
+    }
+
+    return this.appointmentsService.rejectByDoctor(
+      appointmentId,
+      doctor.id,
+      rejectDto.reason,
+    );
+  }
+
+  /**
+   * BR-W-003: Approbation par l'admin
+   * PATCH /appointments/:id/approve/admin
+   */
+  @Patch(':id/approve/admin')
+  @Roles(UserRole.ADMIN)
+  async approveByAdmin(@Param('id') appointmentId: string, @Request() req) {
+    return this.appointmentsService.approveByAdmin(appointmentId, req.user.id);
+  }
+
+  /**
+   * BR-W-003: Rejet par l'admin
+   * PATCH /appointments/:id/reject/admin
+   */
+  @Patch(':id/reject/admin')
+  @Roles(UserRole.ADMIN)
+  async rejectByAdmin(
+    @Param('id') appointmentId: string,
+    @Body() rejectDto: RejectAppointmentDto,
+    @Request() req,
+  ) {
+    return this.appointmentsService.rejectByAdmin(
+      appointmentId,
+      req.user.id,
+      rejectDto.reason,
+    );
   }
 }

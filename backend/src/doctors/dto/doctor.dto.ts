@@ -15,12 +15,20 @@ export class CreateDoctorDto {
   bio?: string;
 
   @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
   @IsNumber()
   consultationDuration?: number;
 
   @IsOptional()
   @IsBoolean()
   isAvailable?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  maxFamilyPatients?: number;
 
   @IsOptional()
   @IsObject()
@@ -39,12 +47,20 @@ export class UpdateDoctorDto {
   bio?: string;
 
   @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
   @IsNumber()
   consultationDuration?: number;
 
   @IsOptional()
   @IsBoolean()
   isAvailable?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  maxFamilyPatients?: number;
 
   @IsOptional()
   @IsObject()
