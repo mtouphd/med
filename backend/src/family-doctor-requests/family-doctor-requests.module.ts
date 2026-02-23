@@ -5,9 +5,13 @@ import { FamilyDoctorRequestsController } from './family-doctor-requests.control
 import { FamilyDoctorRequest } from './entities/family-doctor-request.entity';
 import { Patient } from '../patients/entities/patient.entity';
 import { Doctor } from '../doctors/entities/doctor.entity';
+import { SystemSettingsModule } from '../system-settings/system-settings.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([FamilyDoctorRequest, Patient, Doctor])],
+  imports: [
+    TypeOrmModule.forFeature([FamilyDoctorRequest, Patient, Doctor]),
+    SystemSettingsModule,
+  ],
   controllers: [FamilyDoctorRequestsController],
   providers: [FamilyDoctorRequestsService],
   exports: [FamilyDoctorRequestsService],

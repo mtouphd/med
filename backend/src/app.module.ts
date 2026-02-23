@@ -9,6 +9,7 @@ import { AppointmentsModule } from './appointments/appointments.module';
 import { MedicalRecordsModule } from './medical-records/medical-records.module';
 import { HistoryModule } from './history/history.module';
 import { FamilyDoctorRequestsModule } from './family-doctor-requests/family-doctor-requests.module';
+import { SystemSettingsModule } from './system-settings/system-settings.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { FamilyDoctorRequestsModule } from './family-doctor-requests/family-doct
     MedicalRecordsModule,
     HistoryModule,
     FamilyDoctorRequestsModule,
+    SystemSettingsModule,
   ],
 })
 export class AppModule {}

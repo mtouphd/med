@@ -9,7 +9,9 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
+  phone?: string;
   role: UserRole;
+  isActive?: boolean;
 }
 
 export interface AuthResponse {
@@ -40,12 +42,15 @@ export interface Patient {
   dateOfBirth?: Date;
   address?: string;
   emergencyContact?: string;
-  medicalHistory?: string;
+  familyDoctorId?: string;
+  familyDoctor?: Doctor;
+  familyDoctorAssignedAt?: Date;
 }
 
 export enum AppointmentStatus {
   PENDING = 'PENDING',
   CONFIRMED = 'CONFIRMED',
+  REJECTED = 'REJECTED',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
 }
@@ -62,6 +67,14 @@ export interface Appointment {
   reason?: string;
   notes?: string;
   medications?: string;
+  // Approval workflow
+  doctorApproved?: boolean;
+  adminApproved?: boolean;
+  doctorApprovedAt?: Date;
+  adminApprovedAt?: Date;
+  doctorRejectionReason?: string;
+  adminRejectionReason?: string;
+  requestedBy?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -211,6 +224,18 @@ export enum FamilyDoctorRequestStatus {
   PENDING = 'PENDING',
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
+}
+
+// System Settings
+export interface SystemSetting {
+  id: string;
+  key: string;
+  value: string;
+  type: string;
+  label: string;
+  description?: string;
+  category: string;
+  updatedAt: Date;
 }
 
 export interface FamilyDoctorRequest {

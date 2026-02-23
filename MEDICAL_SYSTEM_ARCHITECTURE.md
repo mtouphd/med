@@ -1,1779 +1,853 @@
 # Architecture Système de Gestion Médicale
 
-**Version:** 1.0
-**Date:** 2026-02-14
-**Statut:** Design & Analyse
+**Version:** 2.0
+**Date:** 2026-02-19
+**Statut:** Design & Implémentation
 
 ---
 
 ## Table des Matières
 
-1. [Analyse des Besoins](#analyse-des-besoins)
-2. [Architecture Actuelle](#architecture-actuelle)
-3. [Architecture Proposée](#architecture-proposée)
-4. [Modifications du Schéma de Base de Données](#modifications-du-schéma-de-base-de-données)
-5. [Système de Permissions](#système-de-permissions)
-6. [Logique Métier](#logique-métier)
-7. [API Endpoints](#api-endpoints)
-8. [Améliorations Suggérées](#améliorations-suggérées)
-9. [Clarifications & Décisions](#clarifications--décisions)
-10. [Plan d'Implémentation](#plan-dimplémentation)
+1. [Vue d'Ensemble](#1-vue-densemble)
+2. [Acteurs et Profils](#2-acteurs-et-profils)
+3. [Cas d'Utilisation](#3-cas-dutilisation)
+4. [Diagrammes de Séquence](#4-diagrammes-de-séquence)
+5. [Architecture Technique](#5-architecture-technique)
+6. [Modèle de Données](#6-modèle-de-données)
+7. [Système de Permissions](#7-système-de-permissions)
+8. [API Endpoints](#8-api-endpoints)
+9. [Règles Métier](#9-règles-métier)
+10. [Plan d'Évolution](#10-plan-dévolution)
 
 ---
 
-## 1. Analyse des Besoins
+## 1. Vue d'Ensemble
 
-### 1.1 Besoins Fonctionnels
+### 1.1 Description du Système
 
-#### Relation Patient-Médecin
-- ✅ **Médecin de Famille**: Un patient peut avoir UN seul médecin de famille à un moment donné
-- ✅ **Consultations Multiples**: Un patient peut être consulté par plusieurs médecins à des dates différentes
-- ✅ **Flexibilité de Rendez-vous**: Un patient peut prendre rendez-vous avec n'importe quel médecin si:
-  - Il n'a pas de médecin de famille, OU
-  - Son médecin de famille n'est pas disponible pendant la période souhaitée
+Le système MedApp est une application de gestion médicale clinique permettant la gestion des patients, médecins, rendez-vous, dossiers médicaux et demandes de médecin de famille. L'application suit un modèle trois-tiers avec un frontend Next.js, un backend NestJS et une base de données PostgreSQL.
 
-#### Workflow de Rendez-vous
-- ✅ **Demande Patient**: Le patient peut demander un rendez-vous
-- ✅ **Double Approbation**: Le rendez-vous reste en PENDING jusqu'à approbation par:
-  - Le médecin concerné ET
-  - L'administrateur de la clinique
+### 1.2 Stack Technique
 
-#### Contrôle d'Accès
+| Couche | Technologie |
+|--------|-------------|
+| Frontend | Next.js 14 (App Router), TypeScript, Tailwind CSS |
+| Backend | NestJS, TypeORM, class-validator |
+| Base de données | PostgreSQL |
+| Authentification | JWT (Passport.js) |
+| API | REST |
 
-**Médecin:**
-- ✅ Visibilité limitée aux dossiers médicaux de SES patients (dont il est médecin de famille)
-- ✅ Visibilité limitée aux rendez-vous de SES patients
-- ✅ Ne peut pas ajouter de patients à la clinique
-
-**Admin:**
-- ✅ Accès à la liste complète des patients inscrits
-- ✅ Seul habilité à ajouter/supprimer des patients
-- ✅ Approbation des rendez-vous
-
-**Patient:**
-- ✅ Peut demander des rendez-vous
-- ✅ Peut consulter ses propres données
-
-### 1.2 Règles Métier Clés
-
-1. Un patient ne peut avoir qu'un seul médecin de famille actif
-2. Un médecin ne peut ajouter que des rendez-vous, pas des patients
-3. Les patients doivent être inscrits par l'admin avant toute consultation
-4. Un rendez-vous nécessite une double approbation (médecin + admin)
-5. Un médecin voit uniquement les données de ses patients de famille
-
----
-
-## 2. Architecture Actuelle
-
-### 2.1 Entités Existantes
+### 1.3 Architecture Globale
 
 ```
-User (users)
-├── id: uuid
-├── email: string (unique)
-├── password: string (hashed)
-├── firstName: string
-├── lastName: string
-├── phone: string
-├── role: enum (PATIENT, DOCTOR, ADMIN)
-├── isActive: boolean
-└── timestamps
-
-Patient (patients)
-├── id: uuid
-├── userId: string (OneToOne → User)
-├── dateOfBirth: date
-├── address: string
-├── emergencyContact: string
-└── medicalHistory: text
-
-Doctor (doctors)
-├── id: uuid
-├── userId: string (OneToOne → User)
-├── specialty: string
-├── licenseNumber: string
-├── bio: text
-├── consultationDuration: number
-├── isAvailable: boolean
-└── schedule: jsonb
-
-Appointment (appointments)
-├── id: uuid
-├── patientId: string (ManyToOne → Patient)
-├── doctorId: string (ManyToOne → Doctor)
-├── dateTime: timestamp
-├── duration: number
-├── status: enum (PENDING, CONFIRMED, COMPLETED, CANCELLED)
-├── reason: string
-├── notes: text
-├── medications: text
-└── timestamps
-```
-
-### 2.2 Relations Actuelles
-
-```
-User ←OneToOne→ Patient
-User ←OneToOne→ Doctor
-Appointment →ManyToOne→ Patient
-Appointment →ManyToOne→ Doctor
-```
-
-**Type de relation Patient ↔ Doctor:** Indirecte Many-to-Many via Appointment
-
-### 2.3 Limitations Identifiées
-
-❌ Pas de notion de "médecin de famille"
-❌ Pas de workflow d'approbation (doctorApproved, adminApproved)
-❌ Pas de restriction d'accès basée sur la relation médecin-patient
-❌ Pas d'historique des changements de médecin de famille
-❌ Pas de validation des règles de prise de rendez-vous
-
----
-
-## 3. Architecture Proposée
-
-### 3.1 Nouveaux Concepts
-
-1. **Médecin de Famille** (Family Doctor)
-   - Relation directe Patient → Doctor (ManyToOne)
-   - Un patient peut avoir 0 ou 1 médecin de famille
-   - Un médecin peut avoir plusieurs patients de famille
-
-2. **Workflow d'Approbation**
-   - Champs d'approbation dans Appointment
-   - Timestamps d'approbation
-   - Raisons de rejet
-
-3. **Historique Médecin de Famille**
-   - Traçabilité des changements
-   - Audit trail complet
-
-4. **Permissions Granulaires**
-   - Guards basés sur les rôles et relations
-   - Isolation des données par médecin
-
----
-
-## 4. Modifications du Schéma de Base de Données
-
-### 4.1 Patient Entity (MODIFIÉE)
-
-```typescript
-import { Entity, Column, PrimaryGeneratedColumn, OneToOne, ManyToOne, OneToMany, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
-import { Doctor } from '../../doctors/entities/doctor.entity';
-import { Appointment } from '../../appointments/entities/appointment.entity';
-
-@Entity('patients')
-export class Patient {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @Column()
-  userId: string;
-
-  @OneToOne(() => User, { eager: true })
-  @JoinColumn({ name: 'userId' })
-  user: User;
-
-  // ========== NOUVEAU: Médecin de Famille ==========
-  @Column({ nullable: true })
-  familyDoctorId: string;
-
-  @ManyToOne(() => Doctor, (doctor) => doctor.familyPatients, { nullable: true, eager: true })
-  @JoinColumn({ name: 'familyDoctorId' })
-  familyDoctor: Doctor;
-
-  @Column({ type: 'timestamp', nullable: true })
-  familyDoctorAssignedAt: Date;
-  // ==================================================
-
-  @Column({ type: 'date', nullable: true })
-  dateOfBirth: Date;
-
-  @Column({ nullable: true })
-  address: string;
-
-  @Column({ nullable: true })
-  emergencyContact: string;
-
-  @Column({ type: 'text', nullable: true })
-  medicalHistory: string;
-
-  // ========== NOUVEAU: Relations ==========
-  @OneToMany(() => Appointment, (appointment) => appointment.patient)
-  appointments: Appointment[];
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
-  // ========================================
-}
-```
-
-**Migration SQL:**
-```sql
-ALTER TABLE patients
-  ADD COLUMN "familyDoctorId" uuid,
-  ADD COLUMN "familyDoctorAssignedAt" timestamp,
-  ADD COLUMN "createdAt" timestamp DEFAULT now(),
-  ADD COLUMN "updatedAt" timestamp DEFAULT now(),
-  ADD CONSTRAINT "FK_patients_familyDoctor"
-    FOREIGN KEY ("familyDoctorId")
-    REFERENCES doctors(id)
-    ON DELETE SET NULL;
-```
-
-### 4.2 Doctor Entity (MODIFIÉE)
-
-```typescript
-import { Entity, Column, PrimaryGeneratedColumn, OneToOne, OneToMany, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
-import { Patient } from '../../patients/entities/patient.entity';
-import { Appointment } from '../../appointments/entities/appointment.entity';
-
-@Entity('doctors')
-export class Doctor {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @Column()
-  userId: string;
-
-  @OneToOne(() => User, { eager: true })
-  @JoinColumn({ name: 'userId' })
-  user: User;
-
-  @Column()
-  specialty: string;
-
-  @Column()
-  licenseNumber: string;
-
-  @Column({ type: 'text', nullable: true })
-  bio: string;
-
-  @Column({ default: 30 })
-  consultationDuration: number;
-
-  @Column({ default: true })
-  isAvailable: boolean;
-
-  @Column({ type: 'jsonb', nullable: true })
-  schedule: {
-    [key: string]: { start: string; end: string; enabled: boolean };
-  };
-
-  // ========== NOUVEAU: Relations ==========
-  @OneToMany(() => Patient, (patient) => patient.familyDoctor)
-  familyPatients: Patient[];
-
-  @OneToMany(() => Appointment, (appointment) => appointment.doctor)
-  appointments: Appointment[];
-
-  @Column({ nullable: true, default: null })
-  maxFamilyPatients: number; // Limite de patients de famille (null = illimité)
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
-  // ========================================
-}
-```
-
-**Migration SQL:**
-```sql
-ALTER TABLE doctors
-  ADD COLUMN "maxFamilyPatients" integer,
-  ADD COLUMN "createdAt" timestamp DEFAULT now(),
-  ADD COLUMN "updatedAt" timestamp DEFAULT now();
-```
-
-### 4.3 Appointment Entity (MODIFIÉE)
-
-```typescript
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
-import { Doctor } from '../../doctors/entities/doctor.entity';
-import { Patient } from '../../patients/entities/patient.entity';
-
-export enum AppointmentStatus {
-  PENDING = 'PENDING',           // En attente d'approbation
-  CONFIRMED = 'CONFIRMED',       // Approuvé par médecin ET admin
-  REJECTED = 'REJECTED',         // Rejeté par médecin OU admin
-  COMPLETED = 'COMPLETED',       // Consultation terminée
-  CANCELLED = 'CANCELLED',       // Annulé par patient ou médecin
-}
-
-@Entity('appointments')
-export class Appointment {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @Column()
-  patientId: string;
-
-  @ManyToOne(() => Patient, (patient) => patient.appointments, { eager: true })
-  @JoinColumn({ name: 'patientId' })
-  patient: Patient;
-
-  @Column()
-  doctorId: string;
-
-  @ManyToOne(() => Doctor, (doctor) => doctor.appointments, { eager: true })
-  @JoinColumn({ name: 'doctorId' })
-  doctor: Doctor;
-
-  @Column({ type: 'timestamp' })
-  dateTime: Date;
-
-  @Column({ default: 30 })
-  duration: number;
-
-  @Column({
-    type: 'enum',
-    enum: AppointmentStatus,
-    default: AppointmentStatus.PENDING,
-  })
-  status: AppointmentStatus;
-
-  @Column({ nullable: true })
-  reason: string;
-
-  @Column({ type: 'text', nullable: true })
-  notes: string;
-
-  @Column({ type: 'text', nullable: true })
-  medications: string;
-
-  // ========== NOUVEAU: Workflow d'Approbation ==========
-  @Column({ default: false })
-  doctorApproved: boolean;
-
-  @Column({ default: false })
-  adminApproved: boolean;
-
-  @Column({ type: 'timestamp', nullable: true })
-  doctorApprovedAt: Date;
-
-  @Column({ nullable: true })
-  doctorApprovedBy: string; // userId du médecin qui a approuvé
-
-  @Column({ type: 'timestamp', nullable: true })
-  adminApprovedAt: Date;
-
-  @Column({ nullable: true })
-  adminApprovedBy: string; // userId de l'admin qui a approuvé
-
-  @Column({ type: 'text', nullable: true })
-  doctorRejectionReason: string;
-
-  @Column({ type: 'text', nullable: true })
-  adminRejectionReason: string;
-  // ======================================================
-
-  @Column({ nullable: true })
-  requestedBy: string; // userId du patient qui a demandé
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
-}
-```
-
-**Migration SQL:**
-```sql
-ALTER TABLE appointments
-  ADD COLUMN "doctorApproved" boolean DEFAULT false,
-  ADD COLUMN "adminApproved" boolean DEFAULT false,
-  ADD COLUMN "doctorApprovedAt" timestamp,
-  ADD COLUMN "doctorApprovedBy" uuid,
-  ADD COLUMN "adminApprovedAt" timestamp,
-  ADD COLUMN "adminApprovedBy" uuid,
-  ADD COLUMN "doctorRejectionReason" text,
-  ADD COLUMN "adminRejectionReason" text,
-  ADD COLUMN "requestedBy" uuid;
-
--- Ajouter REJECTED au enum
-ALTER TYPE "appointment_status_enum" ADD VALUE 'REJECTED';
-```
-
-### 4.4 FamilyDoctorHistory Entity (NOUVELLE)
-
-```typescript
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
-import { Patient } from '../../patients/entities/patient.entity';
-import { Doctor } from '../../doctors/entities/doctor.entity';
-import { User } from '../../users/entities/user.entity';
-
-export enum FamilyDoctorChangeType {
-  ASSIGNED = 'ASSIGNED',     // Premier médecin assigné
-  CHANGED = 'CHANGED',       // Changement de médecin
-  REMOVED = 'REMOVED',       // Médecin retiré (patient n'a plus de médecin de famille)
-}
-
-@Entity('family_doctor_history')
-export class FamilyDoctorHistory {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @Column()
-  patientId: string;
-
-  @ManyToOne(() => Patient, { eager: true })
-  @JoinColumn({ name: 'patientId' })
-  patient: Patient;
-
-  @Column({ nullable: true })
-  previousDoctorId: string;
-
-  @ManyToOne(() => Doctor, { eager: true, nullable: true })
-  @JoinColumn({ name: 'previousDoctorId' })
-  previousDoctor: Doctor;
-
-  @Column({ nullable: true })
-  newDoctorId: string;
-
-  @ManyToOne(() => Doctor, { eager: true, nullable: true })
-  @JoinColumn({ name: 'newDoctorId' })
-  newDoctor: Doctor;
-
-  @Column({
-    type: 'enum',
-    enum: FamilyDoctorChangeType,
-  })
-  changeType: FamilyDoctorChangeType;
-
-  @Column()
-  changedBy: string; // userId de qui a fait le changement (admin)
-
-  @ManyToOne(() => User, { eager: true })
-  @JoinColumn({ name: 'changedBy' })
-  changedByUser: User;
-
-  @Column({ type: 'text', nullable: true })
-  reason: string;
-
-  @CreateDateColumn()
-  changedAt: Date;
-}
-```
-
-**Migration SQL:**
-```sql
-CREATE TYPE "family_doctor_change_type_enum" AS ENUM ('ASSIGNED', 'CHANGED', 'REMOVED');
-
-CREATE TABLE "family_doctor_history" (
-  "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  "patientId" uuid NOT NULL,
-  "previousDoctorId" uuid,
-  "newDoctorId" uuid,
-  "changeType" family_doctor_change_type_enum NOT NULL,
-  "changedBy" uuid NOT NULL,
-  "reason" text,
-  "changedAt" timestamp DEFAULT now(),
-  CONSTRAINT "FK_history_patient" FOREIGN KEY ("patientId") REFERENCES patients(id) ON DELETE CASCADE,
-  CONSTRAINT "FK_history_previousDoctor" FOREIGN KEY ("previousDoctorId") REFERENCES doctors(id) ON DELETE SET NULL,
-  CONSTRAINT "FK_history_newDoctor" FOREIGN KEY ("newDoctorId") REFERENCES doctors(id) ON DELETE SET NULL,
-  CONSTRAINT "FK_history_changedBy" FOREIGN KEY ("changedBy") REFERENCES users(id) ON DELETE SET NULL
-);
-
-CREATE INDEX "IDX_history_patient" ON "family_doctor_history" ("patientId");
-CREATE INDEX "IDX_history_changedAt" ON "family_doctor_history" ("changedAt");
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│   Frontend        │     │   Backend         │     │   PostgreSQL     │
+│   Next.js :3000   │────▶│   NestJS :3001    │────▶│   :5432          │
+│                   │◀────│                   │◀────│                  │
+│  - Pages/Routes   │     │  - Controllers    │     │  - users         │
+│  - Components     │     │  - Services       │     │  - patients      │
+│  - API Client     │     │  - Guards         │     │  - doctors       │
+│  - Auth Context   │     │  - Entities       │     │  - appointments  │
+│                   │     │  - DTOs           │     │  - medical_*     │
+└──────────────────┘     └──────────────────┘     └──────────────────┘
 ```
 
 ---
 
-## 5. Système de Permissions
+## 2. Acteurs et Profils
 
-### 5.1 Guards Existants
+### 2.1 Administrateur (ADMIN)
 
-- `AuthGuard('jwt')` - Authentification
-- `RolesGuard` - Vérification des rôles
+**Rôle :** Gestionnaire principal de la clinique. Responsable de l'inscription des patients et médecins, de la gestion des demandes, et de l'approbation administrative des rendez-vous.
 
-### 5.2 Nouveaux Guards à Créer
+**Accès UI :**
+- Dashboard (statistiques globales)
+- Appointments (tous les rendez-vous, approbation admin)
+- Admin > Overview (liste utilisateurs, stats)
+- Admin > Patients (CRUD patients, modal détaillé avec 4 onglets)
+- Admin > Doctors (CRUD médecins, planning, disponibilité)
+- Admin > Family Doctor Requests (approuver/rejeter demandes)
 
-#### 5.2.1 IsFamilyDoctorGuard
+### 2.2 Médecin (DOCTOR)
 
-**Fichier:** `backend/src/auth/guards/is-family-doctor.guard.ts`
+**Rôle :** Praticien médical. Peut consulter ses patients, gérer ses rendez-vous, approuver ou rejeter les demandes de rendez-vous et de médecin de famille, et mettre à jour les dossiers médicaux.
 
-```typescript
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
-import { PatientsService } from '../../patients/patients.service';
+**Accès UI :**
+- Dashboard
+- Appointments (propres rendez-vous, calendrier, approbation médecin)
+- Consultations (historique des consultations passées avec filtres)
+- Requests (boîte de réception: demandes de RDV + demandes médecin de famille)
+- Patient Folder (liste patients, modal détaillé avec 3 onglets)
 
-@Injectable()
-export class IsFamilyDoctorGuard implements CanActivate {
-  constructor(private patientsService: PatientsService) {}
+### 2.3 Patient (PATIENT)
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const user = request.user;
-    const patientId = request.params.patientId || request.params.id;
+**Rôle :** Utilisateur du service médical. Peut prendre rendez-vous, consulter ses propres données médicales, voir la liste des médecins disponibles, et demander un médecin de famille.
 
-    if (!patientId) {
-      throw new ForbiddenException('Patient ID is required');
-    }
-
-    // Admin a toujours accès
-    if (user.role === 'ADMIN') {
-      return true;
-    }
-
-    // Vérifier que l'utilisateur est le médecin de famille
-    const canAccess = await this.patientsService.isFamilyDoctor(patientId, user.doctorId);
-
-    if (!canAccess) {
-      throw new ForbiddenException('You can only access your family patients');
-    }
-
-    return true;
-  }
-}
-```
-
-#### 5.2.2 IsPatientOwnerGuard
-
-**Fichier:** `backend/src/auth/guards/is-patient-owner.guard.ts`
-
-```typescript
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
-
-@Injectable()
-export class IsPatientOwnerGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
-    const user = request.user;
-    const patientId = request.params.patientId || request.params.id;
-
-    // Admin a toujours accès
-    if (user.role === 'ADMIN') {
-      return true;
-    }
-
-    // Patient peut accéder à ses propres données
-    if (user.role === 'PATIENT' && user.patientId === patientId) {
-      return true;
-    }
-
-    throw new ForbiddenException('You can only access your own patient data');
-  }
-}
-```
-
-#### 5.2.3 CanViewPatientGuard
-
-**Fichier:** `backend/src/auth/guards/can-view-patient.guard.ts`
-
-```typescript
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
-import { PatientsService } from '../../patients/patients.service';
-
-@Injectable()
-export class CanViewPatientGuard implements CanActivate {
-  constructor(private patientsService: PatientsService) {}
-
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const user = request.user;
-    const patientId = request.params.patientId || request.params.id;
-
-    // Admin a toujours accès
-    if (user.role === 'ADMIN') {
-      return true;
-    }
-
-    // Patient peut voir ses propres données
-    if (user.role === 'PATIENT' && user.patientId === patientId) {
-      return true;
-    }
-
-    // Médecin peut voir ses patients de famille
-    if (user.role === 'DOCTOR') {
-      const canAccess = await this.patientsService.isFamilyDoctor(patientId, user.doctorId);
-      if (canAccess) {
-        return true;
-      }
-    }
-
-    throw new ForbiddenException('You do not have permission to view this patient');
-  }
-}
-```
-
-#### 5.2.4 CanManagePatientsGuard
-
-**Fichier:** `backend/src/auth/guards/can-manage-patients.guard.ts`
-
-```typescript
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
-
-@Injectable()
-export class CanManagePatientsGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
-    const user = request.user;
-
-    // Seul l'admin peut gérer les patients
-    if (user.role !== 'ADMIN') {
-      throw new ForbiddenException('Only administrators can manage patients');
-    }
-
-    return true;
-  }
-}
-```
-
-### 5.3 Matrice de Permissions
-
-| Action | Patient | Doctor | Admin |
-|--------|---------|--------|-------|
-| Voir ses propres données | ✅ | ✅ | ✅ |
-| Voir données autres patients | ❌ | ✅ (famille uniquement) | ✅ |
-| Créer patient | ❌ | ❌ | ✅ |
-| Modifier patient | ❌ (ses données) | ❌ | ✅ |
-| Supprimer patient | ❌ | ❌ | ✅ |
-| Assigner médecin de famille | ❌ | ❌ | ✅ |
-| Demander rendez-vous | ✅ | ❌ | ✅ |
-| Approuver rendez-vous (médecin) | ❌ | ✅ (ses patients) | ❌ |
-| Approuver rendez-vous (admin) | ❌ | ❌ | ✅ |
-| Voir tous les patients | ❌ | ❌ | ✅ |
-| Voir ses patients de famille | ❌ | ✅ | ✅ |
+**Accès UI :**
+- Dashboard
+- Appointments (propres rendez-vous, prise de RDV)
+- Consultations (historique des consultations terminées)
+- Doctors (parcourir médecins, réserver RDV, demander médecin de famille)
 
 ---
 
-## 6. Logique Métier
+## 3. Cas d'Utilisation
 
-### 6.1 PatientsService - Gestion Médecin de Famille
+### 3.1 Diagramme des Cas d'Utilisation par Acteur
 
-```typescript
-// backend/src/patients/patients.service.ts
-
-async assignFamilyDoctor(
-  patientId: string,
-  doctorId: string,
-  assignedBy: string,
-  reason?: string
-): Promise<Patient> {
-  // 1. Vérifier que le patient existe
-  const patient = await this.findOne(patientId);
-  if (!patient) {
-    throw new NotFoundException('Patient not found');
-  }
-
-  // 2. Vérifier que le médecin existe
-  const doctor = await this.doctorsService.findOne(doctorId);
-  if (!doctor) {
-    throw new NotFoundException('Doctor not found');
-  }
-
-  // 3. Vérifier limite de patients du médecin
-  if (doctor.maxFamilyPatients) {
-    const currentPatientCount = await this.patientsRepository.count({
-      where: { familyDoctorId: doctorId },
-    });
-    if (currentPatientCount >= doctor.maxFamilyPatients) {
-      throw new BadRequestException('Doctor has reached maximum family patients limit');
-    }
-  }
-
-  const previousDoctorId = patient.familyDoctorId;
-
-  // 4. Assigner le médecin
-  patient.familyDoctorId = doctorId;
-  patient.familyDoctorAssignedAt = new Date();
-
-  // 5. Sauvegarder
-  const updatedPatient = await this.patientsRepository.save(patient);
-
-  // 6. Créer historique
-  await this.familyDoctorHistoryService.create({
-    patientId,
-    previousDoctorId,
-    newDoctorId: doctorId,
-    changeType: previousDoctorId ? FamilyDoctorChangeType.CHANGED : FamilyDoctorChangeType.ASSIGNED,
-    changedBy: assignedBy,
-    reason,
-  });
-
-  return updatedPatient;
-}
-
-async removeFamilyDoctor(
-  patientId: string,
-  removedBy: string,
-  reason?: string
-): Promise<Patient> {
-  const patient = await this.findOne(patientId);
-  if (!patient) {
-    throw new NotFoundException('Patient not found');
-  }
-
-  const previousDoctorId = patient.familyDoctorId;
-
-  if (!previousDoctorId) {
-    throw new BadRequestException('Patient does not have a family doctor');
-  }
-
-  patient.familyDoctorId = null;
-  patient.familyDoctorAssignedAt = null;
-
-  const updatedPatient = await this.patientsRepository.save(patient);
-
-  // Créer historique
-  await this.familyDoctorHistoryService.create({
-    patientId,
-    previousDoctorId,
-    newDoctorId: null,
-    changeType: FamilyDoctorChangeType.REMOVED,
-    changedBy: removedBy,
-    reason,
-  });
-
-  return updatedPatient;
-}
-
-async changeFamilyDoctor(
-  patientId: string,
-  newDoctorId: string,
-  changedBy: string,
-  reason?: string
-): Promise<Patient> {
-  // Utilise assignFamilyDoctor qui gère déjà le changement
-  return this.assignFamilyDoctor(patientId, newDoctorId, changedBy, reason);
-}
-
-async getFamilyDoctorHistory(patientId: string): Promise<FamilyDoctorHistory[]> {
-  return this.familyDoctorHistoryService.findByPatient(patientId);
-}
-
-async isFamilyDoctor(patientId: string, doctorId: string): Promise<boolean> {
-  const patient = await this.patientsRepository.findOne({
-    where: { id: patientId },
-  });
-  return patient?.familyDoctorId === doctorId;
-}
-
-async getFamilyPatients(doctorId: string): Promise<Patient[]> {
-  return this.patientsRepository.find({
-    where: { familyDoctorId: doctorId },
-    relations: ['user', 'familyDoctor'],
-  });
-}
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          SYSTÈME MEDAPP                                     │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────┐                │
+│  │                    AUTHENTIFICATION                      │                │
+│  │  UC-AUTH-01: Se connecter                                │◄─── Tous      │
+│  │  UC-AUTH-02: Voir son profil                             │◄─── Tous      │
+│  └─────────────────────────────────────────────────────────┘                │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────┐                │
+│  │                GESTION DES PATIENTS                      │                │
+│  │  UC-PAT-01: Créer un patient (user + profil)             │◄─── Admin     │
+│  │  UC-PAT-02: Lister tous les patients                     │◄─── Admin/Doc │
+│  │  UC-PAT-03: Voir le détail d'un patient                  │◄─── Admin/Doc │
+│  │  UC-PAT-04: Modifier un patient                          │◄─── Admin     │
+│  │  UC-PAT-05: Supprimer un patient                         │◄─── Admin     │
+│  │  UC-PAT-06: Voir son propre profil                       │◄─── Patient   │
+│  └─────────────────────────────────────────────────────────┘                │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────┐                │
+│  │                GESTION DES MÉDECINS                      │                │
+│  │  UC-DOC-01: Créer un médecin (user + profil)             │◄─── Admin     │
+│  │  UC-DOC-02: Lister tous les médecins                     │◄─── Tous      │
+│  │  UC-DOC-03: Modifier le profil/planning d'un médecin     │◄─── Admin/Doc │
+│  │  UC-DOC-04: Activer/Désactiver disponibilité             │◄─── Admin     │
+│  │  UC-DOC-05: Supprimer un médecin                         │◄─── Admin     │
+│  │  UC-DOC-06: Voir ses statistiques                        │◄─── Doc/Admin │
+│  └─────────────────────────────────────────────────────────┘                │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────┐                │
+│  │                GESTION DES RENDEZ-VOUS                   │                │
+│  │  UC-RDV-01: Demander un rendez-vous                      │◄─── Patient   │
+│  │  UC-RDV-02: Créer un rendez-vous (directement confirmé)  │◄─── Médecin   │
+│  │  UC-RDV-03: Approuver un RDV (côté médecin)              │◄─── Médecin   │
+│  │  UC-RDV-04: Rejeter un RDV (côté médecin)                │◄─── Médecin   │
+│  │  UC-RDV-05: Approuver un RDV (côté admin)                │◄─── Admin     │
+│  │  UC-RDV-06: Rejeter un RDV (côté admin)                  │◄─── Admin     │
+│  │  UC-RDV-07: Annuler un rendez-vous                       │◄─── Tous      │
+│  │  UC-RDV-08: Compléter un rendez-vous (notes, médic.)     │◄─── Médecin   │
+│  │  UC-RDV-09: Voir ses rendez-vous                         │◄─── Tous      │
+│  │  UC-RDV-10: Voir l'historique des consultations           │◄─── Doc/Pat  │
+│  └─────────────────────────────────────────────────────────┘                │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────┐                │
+│  │             MÉDECIN DE FAMILLE                           │                │
+│  │  UC-MF-01: Assigner un médecin de famille                │◄─── Admin     │
+│  │  UC-MF-02: Changer le médecin de famille                 │◄─── Admin     │
+│  │  UC-MF-03: Retirer le médecin de famille                 │◄─── Admin     │
+│  │  UC-MF-04: Demander un médecin de famille                │◄─── Patient   │
+│  │  UC-MF-05: Approuver demande médecin de famille          │◄─── Admin/Doc │
+│  │  UC-MF-06: Rejeter demande médecin de famille            │◄─── Admin/Doc │
+│  │  UC-MF-07: Voir historique changements médecin famille    │◄─── Admin/Doc │
+│  └─────────────────────────────────────────────────────────┘                │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────┐                │
+│  │              DOSSIERS MÉDICAUX                           │                │
+│  │  UC-DM-01: Voir le dossier médical complet               │◄─── Admin/Doc │
+│  │  UC-DM-02: Voir son propre dossier médical               │◄─── Patient   │
+│  │  UC-DM-03: Mettre à jour les informations vitales        │◄─── Doc/Admin │
+│  │  UC-DM-04: Ajouter une condition médicale                │◄─── Doc/Admin │
+│  │  UC-DM-05: Ajouter une allergie                          │◄─── Doc/Admin │
+│  │  UC-DM-06: Prescrire un médicament                       │◄─── Doc/Admin │
+│  │  UC-DM-07: Vérifier interaction allergie/médicament       │◄─── Doc/Admin │
+│  │  UC-DM-08: Arrêter un médicament                         │◄─── Doc/Admin │
+│  │  UC-DM-09: Enregistrer une vaccination                   │◄─── Doc/Admin │
+│  └─────────────────────────────────────────────────────────┘                │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 6.2 AppointmentsService - Règles de Rendez-vous
+### 3.2 Description Détaillée des Cas d'Utilisation
 
-```typescript
-// backend/src/appointments/appointments.service.ts
+#### UC-RDV-01: Demander un rendez-vous (Patient)
 
-async canPatientBookWithDoctor(
-  patientId: string,
-  doctorId: string,
-  dateTime: Date
-): Promise<{ allowed: boolean; reason?: string }> {
-  // 1. Récupérer le patient
-  const patient = await this.patientsService.findOne(patientId);
-  if (!patient) {
-    return { allowed: false, reason: 'Patient not found' };
-  }
+| Champ | Description |
+|-------|-------------|
+| **Acteur** | Patient |
+| **Préconditions** | Patient connecté, médecin disponible |
+| **Postconditions** | RDV créé en statut PENDING |
+| **Scénario nominal** | 1. Patient consulte la liste des médecins<br>2. Patient sélectionne un médecin<br>3. Patient choisit date/heure et saisit un motif<br>4. Système vérifie la disponibilité du médecin<br>5. Si patient a un médecin de famille ET celui-ci est disponible au même créneau → bloquer (BR-A-002)<br>6. RDV créé en PENDING<br>7. Notification au médecin et admin |
+| **Scénarios alternatifs** | 5a. Médecin de famille indisponible → OK avec autre médecin<br>5b. Patient sans médecin de famille → OK avec tout médecin |
 
-  // 2. Récupérer le médecin
-  const doctor = await this.doctorsService.findOne(doctorId);
-  if (!doctor) {
-    return { allowed: false, reason: 'Doctor not found' };
-  }
+#### UC-RDV-03/05: Double Approbation d'un Rendez-vous
 
-  // 3. Vérifier si le médecin est disponible
-  if (!doctor.isAvailable) {
-    return { allowed: false, reason: 'Doctor is not available' };
-  }
+| Champ | Description |
+|-------|-------------|
+| **Acteurs** | Médecin + Admin |
+| **Préconditions** | RDV en statut PENDING |
+| **Postconditions** | RDV passe en CONFIRMED quand les deux ont approuvé |
+| **Scénario nominal** | 1. Médecin voit le RDV dans ses Requests<br>2. Médecin approuve → `doctorApproved = true`<br>3. Admin voit le RDV dans Appointments (pending)<br>4. Admin approuve → `adminApproved = true`<br>5. Statut passe automatiquement à CONFIRMED |
+| **Scénarios alternatifs** | 2a. Médecin rejette (raison obligatoire) → statut REJECTED<br>4a. Admin rejette (raison obligatoire) → statut REJECTED |
 
-  // 4. Si pas de médecin de famille → OK avec n'importe quel médecin
-  if (!patient.familyDoctorId) {
-    return { allowed: true };
-  }
+#### UC-MF-04: Demander un médecin de famille (Patient)
 
-  // 5. Si rendez-vous avec son médecin de famille → OK
-  if (patient.familyDoctorId === doctorId) {
-    return { allowed: true };
-  }
+| Champ | Description |
+|-------|-------------|
+| **Acteur** | Patient |
+| **Préconditions** | Patient connecté, pas de demande en cours, pas déjà affecté au même médecin |
+| **Postconditions** | Demande créée en PENDING |
+| **Scénario nominal** | 1. Patient parcourt la liste des médecins<br>2. Patient clique "Request Family Doctor"<br>3. Patient saisit un motif (optionnel)<br>4. Système vérifie les contraintes<br>5. Demande créée en PENDING |
+| **Scénarios alternatifs** | 4a. Demande en cours déjà → erreur<br>4b. Déjà médecin de famille de ce médecin → erreur |
 
-  // 6. Rendez-vous avec un autre médecin → vérifier disponibilité du médecin de famille
-  const familyDoctorAvailable = await this.isDoctorAvailable(
-    patient.familyDoctorId,
-    dateTime,
-    doctor.consultationDuration
-  );
+#### UC-DM-06: Prescrire un médicament (Médecin)
 
-  if (familyDoctorAvailable) {
-    return {
-      allowed: false,
-      reason: 'Your family doctor is available at this time. Please book with your family doctor first.'
-    };
-  }
+| Champ | Description |
+|-------|-------------|
+| **Acteur** | Médecin |
+| **Préconditions** | Médecin connecté, accès au dossier médical du patient |
+| **Postconditions** | Médicament ajouté au dossier |
+| **Scénario nominal** | 1. Médecin ouvre le dossier médical du patient<br>2. Médecin saisit le médicament (nom, dosage, fréquence)<br>3. Système vérifie allergies connues (BR-DM-007)<br>4. Aucune interaction → médicament prescrit<br>5. `prescribedBy` auto-renseigné avec l'ID du médecin |
+| **Scénarios alternatifs** | 3a. Allergie détectée → avertissement<br>3b. Médecin force la prescription (`forceOverrideAllergy=true`) → médicament prescrit avec mention |
 
-  // 7. Médecin de famille non disponible → OK avec autre médecin
-  return { allowed: true };
-}
+---
 
-async isDoctorAvailable(
-  doctorId: string,
-  dateTime: Date,
-  duration: number
-): Promise<boolean> {
-  const doctor = await this.doctorsService.findOne(doctorId);
+## 4. Diagrammes de Séquence
 
-  if (!doctor || !doctor.isAvailable) {
-    return false;
-  }
+### 4.1 Authentification (Login)
 
-  // Vérifier le schedule
-  const dayOfWeek = dateTime.toLocaleDateString('en-US', { weekday: 'lowercase' });
-  const timeSlot = doctor.schedule?.[dayOfWeek];
+```mermaid
+sequenceDiagram
+    actor U as Utilisateur
+    participant F as Frontend
+    participant B as Backend (AuthController)
+    participant DB as PostgreSQL
 
-  if (!timeSlot || !timeSlot.enabled) {
-    return false;
-  }
-
-  // Vérifier les rendez-vous existants
-  const existingAppointment = await this.appointmentsRepository.findOne({
-    where: {
-      doctorId,
-      dateTime,
-      status: In([AppointmentStatus.CONFIRMED, AppointmentStatus.PENDING]),
-    },
-  });
-
-  return !existingAppointment;
-}
-
-async createAppointment(createDto: CreateAppointmentDto, requestedBy: string): Promise<Appointment> {
-  // 1. Valider les règles métier
-  const validation = await this.canPatientBookWithDoctor(
-    createDto.patientId,
-    createDto.doctorId,
-    createDto.dateTime
-  );
-
-  if (!validation.allowed) {
-    throw new BadRequestException(validation.reason);
-  }
-
-  // 2. Créer le rendez-vous en PENDING
-  const appointment = this.appointmentsRepository.create({
-    ...createDto,
-    status: AppointmentStatus.PENDING,
-    doctorApproved: false,
-    adminApproved: false,
-    requestedBy,
-  });
-
-  return this.appointmentsRepository.save(appointment);
-}
-
-async approveByDoctor(appointmentId: string, doctorId: string): Promise<Appointment> {
-  const appointment = await this.findOne(appointmentId);
-
-  if (!appointment) {
-    throw new NotFoundException('Appointment not found');
-  }
-
-  if (appointment.doctorId !== doctorId) {
-    throw new ForbiddenException('You can only approve your own appointments');
-  }
-
-  appointment.doctorApproved = true;
-  appointment.doctorApprovedAt = new Date();
-  appointment.doctorApprovedBy = doctorId;
-
-  // Si admin a déjà approuvé → passer en CONFIRMED
-  if (appointment.adminApproved) {
-    appointment.status = AppointmentStatus.CONFIRMED;
-  }
-
-  return this.appointmentsRepository.save(appointment);
-}
-
-async rejectByDoctor(appointmentId: string, doctorId: string, reason: string): Promise<Appointment> {
-  const appointment = await this.findOne(appointmentId);
-
-  if (!appointment) {
-    throw new NotFoundException('Appointment not found');
-  }
-
-  if (appointment.doctorId !== doctorId) {
-    throw new ForbiddenException('You can only reject your own appointments');
-  }
-
-  appointment.doctorApproved = false;
-  appointment.doctorRejectionReason = reason;
-  appointment.status = AppointmentStatus.REJECTED;
-
-  return this.appointmentsRepository.save(appointment);
-}
-
-async approveByAdmin(appointmentId: string, adminId: string): Promise<Appointment> {
-  const appointment = await this.findOne(appointmentId);
-
-  if (!appointment) {
-    throw new NotFoundException('Appointment not found');
-  }
-
-  appointment.adminApproved = true;
-  appointment.adminApprovedAt = new Date();
-  appointment.adminApprovedBy = adminId;
-
-  // Si médecin a déjà approuvé → passer en CONFIRMED
-  if (appointment.doctorApproved) {
-    appointment.status = AppointmentStatus.CONFIRMED;
-  }
-
-  return this.appointmentsRepository.save(appointment);
-}
-
-async rejectByAdmin(appointmentId: string, adminId: string, reason: string): Promise<Appointment> {
-  const appointment = await this.findOne(appointmentId);
-
-  if (!appointment) {
-    throw new NotFoundException('Appointment not found');
-  }
-
-  appointment.adminApproved = false;
-  appointment.adminRejectionReason = reason;
-  appointment.status = AppointmentStatus.REJECTED;
-
-  return this.appointmentsRepository.save(appointment);
-}
-
-async getPendingAppointments(): Promise<Appointment[]> {
-  return this.appointmentsRepository.find({
-    where: { status: AppointmentStatus.PENDING },
-    order: { createdAt: 'ASC' },
-  });
-}
-
-async getDoctorPendingAppointments(doctorId: string): Promise<Appointment[]> {
-  return this.appointmentsRepository.find({
-    where: {
-      doctorId,
-      status: AppointmentStatus.PENDING,
-    },
-    order: { createdAt: 'ASC' },
-  });
-}
+    U->>F: Saisit email + password
+    F->>B: POST /auth/login {email, password}
+    B->>DB: SELECT * FROM users WHERE email = ?
+    DB-->>B: User trouvé
+    B->>B: bcrypt.compare(password, hash)
+    alt Password valide
+        B->>B: jwt.sign({userId, role})
+        B-->>F: 200 {access_token, user}
+        F->>F: localStorage.setItem("token", access_token)
+        F-->>U: Redirection Dashboard
+    else Password invalide
+        B-->>F: 401 Unauthorized
+        F-->>U: Message d'erreur
+    end
 ```
 
-### 6.3 DoctorsService - Gestion Patients
+### 4.2 Création d'un Patient (Admin)
 
-```typescript
-// backend/src/doctors/doctors.service.ts
+```mermaid
+sequenceDiagram
+    actor A as Admin
+    participant F as Frontend (Admin/Patients)
+    participant B as Backend (PatientsController)
+    participant PS as PatientsService
+    participant DB as PostgreSQL
 
-async getMyFamilyPatients(doctorId: string): Promise<Patient[]> {
-  return this.patientsService.getFamilyPatients(doctorId);
-}
+    A->>F: Remplit formulaire (nom, email, password, etc.)
+    F->>B: POST /patients {user: {...}, dateOfBirth, address, ...}
+    B->>B: ValidationPipe (CreatePatientDto)
+    B->>PS: create(createPatientDto)
+    PS->>DB: SELECT FROM users WHERE email = ?
+    alt Email existe déjà
+        PS-->>B: 400 BadRequest "Email already exists"
+        B-->>F: 400 Error
+        F-->>A: Alert erreur
+    else Email disponible
+        PS->>PS: bcrypt.hash(password, 10)
+        PS->>DB: INSERT INTO users (email, password, firstName, ...)
+        DB-->>PS: savedUser
+        PS->>DB: INSERT INTO patients (userId, dateOfBirth, address, ...)
+        DB-->>PS: savedPatient
+        PS->>DB: SELECT patient WITH relations (user, familyDoctor)
+        DB-->>PS: patientComplet
+        PS-->>B: Patient créé
+        B-->>F: 201 Created
+        F->>F: Recharge la liste
+        F-->>A: Alert succès
+    end
+```
 
-async canAccessPatient(doctorId: string, patientId: string): Promise<boolean> {
-  return this.patientsService.isFamilyDoctor(patientId, doctorId);
-}
+### 4.3 Prise de Rendez-vous (Patient)
 
-async getStatistics(doctorId: string): Promise<{
-  totalFamilyPatients: number;
-  maxFamilyPatients: number | null;
-  totalAppointments: number;
-  pendingAppointments: number;
-  confirmedAppointments: number;
-}> {
-  const doctor = await this.findOne(doctorId);
+```mermaid
+sequenceDiagram
+    actor P as Patient
+    participant F as Frontend (Doctors)
+    participant B as Backend
+    participant AS as AppointmentsService
+    participant DB as PostgreSQL
 
-  const familyPatients = await this.patientsService.getFamilyPatients(doctorId);
+    P->>F: Sélectionne un médecin, date/heure, motif
+    F->>B: GET /appointments/check-availability/:doctorId?dateTime=...
+    B->>AS: checkAvailability(doctorId, dateTime)
+    AS->>DB: Vérifie schedule + conflits RDV
+    DB-->>AS: Résultat disponibilité
+    AS-->>B: {available: true/false}
+    B-->>F: Résultat
 
-  const [totalAppointments, pendingAppointments, confirmedAppointments] = await Promise.all([
-    this.appointmentsRepository.count({ where: { doctorId } }),
-    this.appointmentsRepository.count({ where: { doctorId, status: AppointmentStatus.PENDING } }),
-    this.appointmentsRepository.count({ where: { doctorId, status: AppointmentStatus.CONFIRMED } }),
-  ]);
+    alt Médecin disponible
+        F-->>P: Créneau disponible ✓
+        P->>F: Confirme la réservation
+        F->>B: POST /appointments {doctorId, dateTime, duration, reason}
+        B->>AS: create(dto, patientUserId)
 
-  return {
-    totalFamilyPatients: familyPatients.length,
-    maxFamilyPatients: doctor.maxFamilyPatients,
-    totalAppointments,
-    pendingAppointments,
-    confirmedAppointments,
-  };
-}
+        AS->>DB: SELECT patient WHERE userId = ?
+        DB-->>AS: Patient (avec familyDoctorId)
+
+        alt Patient a un médecin de famille
+            AS->>DB: Vérifie disponibilité médecin de famille au même créneau
+            alt Médecin de famille disponible
+                AS-->>B: 400 "Your family doctor is available"
+                B-->>F: Erreur
+                F-->>P: "Veuillez réserver avec votre médecin de famille"
+            else Médecin de famille indisponible
+                AS->>DB: INSERT INTO appointments (status: PENDING)
+                DB-->>AS: Appointment créé
+                AS-->>B: 201 Created
+                B-->>F: RDV créé
+                F-->>P: "RDV en attente d'approbation"
+            end
+        else Patient sans médecin de famille
+            AS->>DB: INSERT INTO appointments (status: PENDING)
+            DB-->>AS: Appointment créé
+            AS-->>B: 201 Created
+            B-->>F: RDV créé
+            F-->>P: "RDV en attente d'approbation"
+        end
+    else Médecin indisponible
+        F-->>P: Créneau non disponible ✗
+    end
+```
+
+### 4.4 Double Approbation d'un Rendez-vous
+
+```mermaid
+sequenceDiagram
+    actor Doc as Médecin
+    actor Adm as Admin
+    participant F as Frontend
+    participant B as Backend (AppointmentsController)
+    participant AS as AppointmentsService
+    participant DB as PostgreSQL
+
+    Note over Doc,DB: Un RDV est en statut PENDING (doctorApproved=false, adminApproved=false)
+
+    par Approbation Médecin
+        Doc->>F: Voit le RDV dans Requests
+        Doc->>F: Clique "Approve"
+        F->>B: PATCH /appointments/:id/approve/doctor
+        B->>AS: approveByDoctor(id, doctorUserId)
+        AS->>DB: UPDATE appointments SET doctorApproved=true, doctorApprovedAt=now()
+        AS->>AS: Vérifie si adminApproved == true
+        alt Admin pas encore approuvé
+            AS-->>B: RDV reste PENDING
+        else Admin déjà approuvé
+            AS->>DB: UPDATE status = CONFIRMED
+            AS-->>B: RDV passe en CONFIRMED
+        end
+        B-->>F: Appointment mis à jour
+    and Approbation Admin
+        Adm->>F: Voit le RDV dans Appointments (pending)
+        Adm->>F: Clique "Approve"
+        F->>B: PATCH /appointments/:id/approve/admin
+        B->>AS: approveByAdmin(id, adminUserId)
+        AS->>DB: UPDATE appointments SET adminApproved=true, adminApprovedAt=now()
+        AS->>AS: Vérifie si doctorApproved == true
+        alt Médecin pas encore approuvé
+            AS-->>B: RDV reste PENDING
+        else Médecin déjà approuvé
+            AS->>DB: UPDATE status = CONFIRMED
+            AS-->>B: RDV passe en CONFIRMED
+        end
+        B-->>F: Appointment mis à jour
+    end
+
+    Note over Doc,DB: Le RDV passe en CONFIRMED uniquement<br/>quand les DEUX ont approuvé
+```
+
+### 4.5 Rejet d'un Rendez-vous
+
+```mermaid
+sequenceDiagram
+    actor Doc as Médecin
+    participant F as Frontend (Requests)
+    participant B as Backend
+    participant AS as AppointmentsService
+    participant DB as PostgreSQL
+
+    Doc->>F: Voit le RDV dans sa boîte de réception
+    Doc->>F: Clique "Reject", saisit une raison
+    F->>B: PATCH /appointments/:id/reject/doctor {reason: "..."}
+    B->>AS: rejectByDoctor(id, doctorUserId, reason)
+    AS->>DB: SELECT appointment WHERE id = ?
+    AS->>AS: Vérifie que doctorId correspond
+    AS->>DB: UPDATE SET status=REJECTED, doctorRejectionReason=reason
+    DB-->>AS: OK
+    AS-->>B: Appointment rejeté
+    B-->>F: 200 OK
+    F-->>Doc: RDV marqué comme rejeté
+
+    Note over Doc,DB: Le rejet par un seul acteur<br/>suffit à passer en REJECTED
+```
+
+### 4.6 Demande de Médecin de Famille (Patient → Médecin/Admin)
+
+```mermaid
+sequenceDiagram
+    actor P as Patient
+    actor Doc as Médecin
+    participant F as Frontend
+    participant B as Backend
+    participant FRS as FamilyDoctorRequestsService
+    participant PS as PatientsService
+    participant DB as PostgreSQL
+
+    P->>F: Page Doctors → "Request Family Doctor"
+    P->>F: Saisit motif (optionnel)
+    F->>B: POST /family-doctor-requests {doctorId, reason}
+    B->>FRS: create(patientId, doctorId, reason)
+    FRS->>DB: Vérifie pas de demande en cours
+    FRS->>DB: INSERT INTO family_doctor_requests (status: PENDING)
+    DB-->>FRS: Request créée
+    FRS-->>B: 201 Created
+    B-->>F: Demande envoyée
+    F-->>P: "Demande envoyée avec succès"
+
+    Note over Doc,DB: Le médecin peut approuver en premier
+
+    Doc->>F: Voit la demande dans Requests (onglet Family Doctor)
+    Doc->>F: Clique "Approve"
+    F->>B: PATCH /family-doctor-requests/:id/approve/doctor
+    B->>FRS: approveByDoctor(id, doctorUserId)
+    FRS->>DB: Vérifie maxFamilyPatients
+    alt Capacité atteinte
+        FRS-->>B: 400 "Maximum family patients reached"
+        B-->>F: Erreur
+    else Capacité OK
+        FRS->>PS: assignFamilyDoctor(patientId, doctorId)
+        PS->>DB: UPDATE patients SET familyDoctorId = doctorId
+        PS->>DB: INSERT INTO family_doctor_history (ASSIGNED)
+        FRS->>DB: UPDATE request SET status=APPROVED
+        FRS-->>B: OK
+        B-->>F: Demande approuvée
+        F-->>Doc: Succès
+    end
+```
+
+### 4.7 Compléter une Consultation (Médecin)
+
+```mermaid
+sequenceDiagram
+    actor Doc as Médecin
+    participant F as Frontend (Appointments)
+    participant B as Backend
+    participant AS as AppointmentsService
+    participant DB as PostgreSQL
+
+    Doc->>F: Sélectionne un RDV CONFIRMED
+    Doc->>F: Rédige notes cliniques + prescriptions
+    F->>B: PUT /appointments/:id {notes, medications, status: "COMPLETED"}
+    B->>AS: update(id, updateDto)
+    AS->>DB: UPDATE appointments SET notes=..., medications=..., status=COMPLETED
+    DB-->>AS: OK
+    AS-->>B: Appointment mis à jour
+    B-->>F: 200 OK
+    F-->>Doc: Consultation complétée ✓
+
+    Note over Doc,DB: La consultation apparaît désormais<br/>dans l'historique du patient et du médecin
+```
+
+### 4.8 Prescription avec Vérification d'Allergie
+
+```mermaid
+sequenceDiagram
+    actor Doc as Médecin
+    participant F as Frontend (Medical Records)
+    participant B as Backend (MedicalRecordsController)
+    participant MRS as MedicalRecordsService
+    participant DB as PostgreSQL
+
+    Doc->>F: Ouvre le dossier médical d'un patient
+    Doc->>F: Onglet Medications → Ajouter
+    Doc->>F: Saisit nom, dosage, fréquence
+
+    F->>B: POST /patients/:id/medical-record/medications/check-allergy {medicationName}
+    B->>MRS: canPrescribe(patientId, medicationName)
+    MRS->>DB: SELECT allergies WHERE medicalRecordId = ? AND type = MEDICATION
+    DB-->>MRS: Liste allergies médicamenteuses
+    MRS->>MRS: Comparaison insensible à la casse (nom ∩ allergie)
+
+    alt Allergie détectée
+        MRS-->>B: {canPrescribe: false, conflictingAllergies: [...]}
+        B-->>F: Avertissement allergie ⚠️
+        F-->>Doc: "Attention: allergie détectée à [substance]"
+        Doc->>F: Force la prescription (override)
+        F->>B: POST /patients/:id/medical-record/medications {name, ..., forceOverrideAllergy: true}
+    else Aucune allergie
+        MRS-->>B: {canPrescribe: true}
+        B-->>F: OK
+        F->>B: POST /patients/:id/medical-record/medications {name, dosage, ...}
+    end
+
+    B->>MRS: addMedication(patientId, dto, prescribedBy)
+    MRS->>DB: INSERT INTO medications (...)
+    DB-->>MRS: Medication créée
+    MRS-->>B: 201
+    B-->>F: Médicament prescrit
+    F-->>Doc: Prescription enregistrée ✓
 ```
 
 ---
 
-## 7. API Endpoints
+## 5. Architecture Technique
 
-### 7.1 Patients Endpoints
+### 5.1 Structure du Projet
 
-#### Gestion Médecin de Famille
-
-```typescript
-// POST /api/patients/:id/family-doctor
-@Post(':id/family-doctor')
-@UseGuards(AuthGuard('jwt'), RolesGuard, CanManagePatientsGuard)
-@Roles(UserRole.ADMIN)
-async assignFamilyDoctor(
-  @Param('id') patientId: string,
-  @Body() dto: { doctorId: string; reason?: string },
-  @Request() req,
-) {
-  return this.patientsService.assignFamilyDoctor(
-    patientId,
-    dto.doctorId,
-    req.user.userId,
-    dto.reason
-  );
-}
-
-// DELETE /api/patients/:id/family-doctor
-@Delete(':id/family-doctor')
-@UseGuards(AuthGuard('jwt'), RolesGuard, CanManagePatientsGuard)
-@Roles(UserRole.ADMIN)
-async removeFamilyDoctor(
-  @Param('id') patientId: string,
-  @Body() dto: { reason?: string },
-  @Request() req,
-) {
-  return this.patientsService.removeFamilyDoctor(
-    patientId,
-    req.user.userId,
-    dto.reason
-  );
-}
-
-// PATCH /api/patients/:id/family-doctor
-@Patch(':id/family-doctor')
-@UseGuards(AuthGuard('jwt'), RolesGuard, CanManagePatientsGuard)
-@Roles(UserRole.ADMIN)
-async changeFamilyDoctor(
-  @Param('id') patientId: string,
-  @Body() dto: { newDoctorId: string; reason?: string },
-  @Request() req,
-) {
-  return this.patientsService.changeFamilyDoctor(
-    patientId,
-    dto.newDoctorId,
-    req.user.userId,
-    dto.reason
-  );
-}
-
-// GET /api/patients/:id/family-doctor/history
-@Get(':id/family-doctor/history')
-@UseGuards(AuthGuard('jwt'), RolesGuard, CanViewPatientGuard)
-async getFamilyDoctorHistory(@Param('id') patientId: string) {
-  return this.patientsService.getFamilyDoctorHistory(patientId);
-}
+```
+med/
+├── backend/
+│   ├── src/
+│   │   ├── appointments/       # Gestion des rendez-vous
+│   │   ├── auth/               # Authentification JWT, guards, decorators
+│   │   ├── common/             # Guards partagés (CanManagePatients, CanViewPatient)
+│   │   ├── doctors/            # Gestion des médecins
+│   │   ├── family-doctor-requests/  # Demandes de médecin de famille
+│   │   ├── history/            # Historique changements médecin de famille
+│   │   ├── medical-records/    # Dossiers médicaux (conditions, allergies, medications, vaccinations)
+│   │   ├── patients/           # Gestion des patients
+│   │   ├── users/              # Gestion des utilisateurs
+│   │   ├── app.module.ts       # Module racine
+│   │   └── main.ts             # Point d'entrée
+│   └── scripts/                # Seeds, migrations, utilitaires
+├── frontend/
+│   ├── src/
+│   │   ├── app/(dashboard)/    # Pages protégées
+│   │   │   ├── admin/          # Pages admin (patients, doctors, requests)
+│   │   │   ├── appointments/   # Calendrier & liste rendez-vous
+│   │   │   ├── consultations/  # Historique consultations
+│   │   │   ├── dashboard/      # Dashboard principal
+│   │   │   ├── doctors/        # Liste médecins (patient)
+│   │   │   ├── patients/       # Dossier patients (médecin)
+│   │   │   ├── requests/       # Boîte de réception médecin
+│   │   │   └── layout.tsx      # Sidebar + navigation par rôle
+│   │   ├── components/         # Composants réutilisables (Modal, Badge, DataTable, etc.)
+│   │   ├── lib/                # API client, auth context
+│   │   └── types/              # Interfaces TypeScript
+│   └── ...
+└── docs/                       # Documentation
 ```
 
-### 7.2 Doctors Endpoints
+### 5.2 Flux d'Authentification
 
-```typescript
-// GET /api/doctors/:id/family-patients
-@Get(':id/family-patients')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(UserRole.DOCTOR, UserRole.ADMIN)
-async getFamilyPatients(@Param('id') doctorId: string, @Request() req) {
-  // Médecin ne peut voir que ses propres patients
-  if (req.user.role === UserRole.DOCTOR && req.user.doctorId !== doctorId) {
-    throw new ForbiddenException('You can only view your own family patients');
-  }
-  return this.doctorsService.getMyFamilyPatients(doctorId);
-}
-
-// GET /api/doctors/:id/statistics
-@Get(':id/statistics')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(UserRole.DOCTOR, UserRole.ADMIN)
-async getStatistics(@Param('id') doctorId: string, @Request() req) {
-  if (req.user.role === UserRole.DOCTOR && req.user.doctorId !== doctorId) {
-    throw new ForbiddenException('You can only view your own statistics');
-  }
-  return this.doctorsService.getStatistics(doctorId);
-}
-
-// GET /api/doctors/:id/pending-appointments
-@Get(':id/pending-appointments')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(UserRole.DOCTOR)
-async getPendingAppointments(@Param('id') doctorId: string, @Request() req) {
-  if (req.user.doctorId !== doctorId) {
-    throw new ForbiddenException();
-  }
-  return this.appointmentsService.getDoctorPendingAppointments(doctorId);
-}
 ```
-
-### 7.3 Appointments Endpoints
-
-```typescript
-// POST /api/appointments
-@Post()
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(UserRole.PATIENT, UserRole.ADMIN)
-async create(@Body() createDto: CreateAppointmentDto, @Request() req) {
-  // Patient ne peut créer que pour lui-même
-  if (req.user.role === UserRole.PATIENT && req.user.patientId !== createDto.patientId) {
-    throw new ForbiddenException('You can only create appointments for yourself');
-  }
-  return this.appointmentsService.createAppointment(createDto, req.user.userId);
-}
-
-// PATCH /api/appointments/:id/approve/doctor
-@Patch(':id/approve/doctor')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(UserRole.DOCTOR)
-async approveByDoctor(@Param('id') id: string, @Request() req) {
-  return this.appointmentsService.approveByDoctor(id, req.user.doctorId);
-}
-
-// PATCH /api/appointments/:id/reject/doctor
-@Patch(':id/reject/doctor')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(UserRole.DOCTOR)
-async rejectByDoctor(
-  @Param('id') id: string,
-  @Body() dto: { reason: string },
-  @Request() req,
-) {
-  return this.appointmentsService.rejectByDoctor(id, req.user.doctorId, dto.reason);
-}
-
-// PATCH /api/appointments/:id/approve/admin
-@Patch(':id/approve/admin')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(UserRole.ADMIN)
-async approveByAdmin(@Param('id') id: string, @Request() req) {
-  return this.appointmentsService.approveByAdmin(id, req.user.userId);
-}
-
-// PATCH /api/appointments/:id/reject/admin
-@Patch(':id/reject/admin')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(UserRole.ADMIN)
-async rejectByAdmin(
-  @Param('id') id: string,
-  @Body() dto: { reason: string },
-  @Request() req,
-) {
-  return this.appointmentsService.rejectByAdmin(id, req.user.userId, dto.reason);
-}
-
-// GET /api/appointments/pending
-@Get('pending')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(UserRole.ADMIN)
-async getPending() {
-  return this.appointmentsService.getPendingAppointments();
-}
-```
-
-### 7.4 Admin Endpoints
-
-```typescript
-// GET /api/admin/patients
-@Get('patients')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(UserRole.ADMIN)
-async getAllPatients() {
-  return this.patientsService.findAll();
-}
-
-// POST /api/admin/patients
-@Post('patients')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(UserRole.ADMIN)
-async createPatient(@Body() createDto: CreatePatientDto) {
-  return this.patientsService.create(createDto);
-}
-
-// DELETE /api/admin/patients/:id
-@Delete('patients/:id')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(UserRole.ADMIN)
-async deletePatient(@Param('id') id: string) {
-  return this.patientsService.remove(id);
-}
-
-// GET /api/admin/appointments/pending
-@Get('appointments/pending')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(UserRole.ADMIN)
-async getPendingAppointments() {
-  return this.appointmentsService.getPendingAppointments();
-}
-
-// GET /api/admin/statistics
-@Get('statistics')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(UserRole.ADMIN)
-async getStatistics() {
-  return this.adminService.getGlobalStatistics();
-}
+1. POST /auth/login → JWT token
+2. Token stocké dans localStorage
+3. Intercepteur Axios ajoute "Authorization: Bearer <token>" à chaque requête
+4. Backend: AuthGuard('jwt') vérifie le token
+5. Backend: RolesGuard vérifie le rôle de l'utilisateur
+6. Backend: Guards spécifiques vérifient les permissions contextuelles
 ```
 
 ---
 
-## 8. Améliorations Suggérées
+## 6. Modèle de Données
 
-### 8.1 Priorité Critique
+### 6.1 Diagramme Entité-Relation
 
-#### 1. Gestion des Départs de Médecins
-**Problème:** Que se passe-t-il quand un médecin quitte la clinique?
-
-**Solution:**
-- Ajouter un statut `isActive` sur Doctor (déjà existant)
-- Lors de la désactivation d'un médecin:
-  - Lister tous ses patients de famille
-  - Notifier l'admin
-  - Option 1: Réassignation automatique au médecin avec le moins de patients
-  - Option 2: Réassignation manuelle par l'admin
-  - Conserver l'historique
-
-```typescript
-async deactivateDoctor(doctorId: string, reassignStrategy: 'auto' | 'manual' = 'manual') {
-  const familyPatients = await this.getFamilyPatients(doctorId);
-
-  if (reassignStrategy === 'auto' && familyPatients.length > 0) {
-    // Trouver médecin avec moins de patients
-    const targetDoctor = await this.findDoctorWithLeastPatients();
-
-    for (const patient of familyPatients) {
-      await this.patientsService.assignFamilyDoctor(
-        patient.id,
-        targetDoctor.id,
-        'SYSTEM',
-        `Auto-reassigned from deactivated doctor ${doctorId}`
-      );
-    }
-  }
-
-  // Désactiver le médecin
-  await this.update(doctorId, { isAvailable: false });
-}
+```
+┌──────────────┐     ┌──────────────────┐     ┌──────────────┐
+│    users      │     │   appointments    │     │   doctors     │
+├──────────────┤     ├──────────────────┤     ├──────────────┤
+│ id (PK)       │     │ id (PK)           │     │ id (PK)       │
+│ email (unique)│     │ patientId (FK)    │     │ userId (FK)   │
+│ password      │     │ doctorId (FK)     │     │ specialty     │
+│ firstName     │     │ dateTime          │     │ licenseNumber │
+│ lastName      │     │ duration          │     │ bio           │
+│ phone         │     │ status            │     │ address       │
+│ role (enum)   │     │ reason            │     │ consultDur.   │
+│ isActive      │     │ notes             │     │ isAvailable   │
+│ timestamps    │     │ medications       │     │ schedule(JSON)│
+└──────┬───────┘     │ doctorApproved    │     │ maxFamPatient │
+       │              │ adminApproved     │     │ timestamps    │
+       │ 1:1          │ doctorApprovedAt  │     └──────┬───────┘
+       ├──────────────│ doctorApprovedBy  │            │
+       │              │ adminApprovedAt   │            │ 1:N
+       │              │ adminApprovedBy   │     ┌──────┴───────┐
+       │              │ rejection reasons │     │   patients    │
+       │              │ requestedBy (FK)  │     ├──────────────┤
+       │              │ timestamps        │     │ id (PK)       │
+       │              └────────┬──────────┘     │ userId (FK)   │
+       │                       │                │ familyDocId   │──┐
+       │ 1:1                   │ N:1            │ famDocAssAt   │  │ N:1
+       │              ┌────────┴──────────┐     │ dateOfBirth   │  │ (vers doctors)
+       │              │  N:1 (patient)     │     │ address       │  │
+       │              │  N:1 (doctor)      │     │ emergencyCtct │  │
+       │              └───────────────────┘     │ timestamps    │  │
+       │                                        └──────┬───────┘  │
+       │                                               │           │
+       │                                               │ 1:1       │
+       │                                        ┌──────┴───────┐  │
+       │                                        │medical_records│  │
+       │                                        ├──────────────┤  │
+       │                                        │ id (PK)       │  │
+       │                                        │ patientId(FK) │  │
+       │                                        │ bloodType     │  │
+       │                                        │ height/weight │  │
+       │                                        │ organDonor    │  │
+       │                                        │ generalNotes  │  │
+       │                                        └──────┬───────┘  │
+       │                                               │           │
+       │                         ┌──────────┬──────────┼──────────┐│
+       │                         │          │          │          ││
+       │                    ┌────┴─────┐┌───┴────┐┌────┴────┐┌───┴┴──────┐
+       │                    │conditions││allergies││medicatns││vaccinations│
+       │                    └──────────┘└────────┘└─────────┘└───────────┘
+       │
+       │              ┌─────────────────────────┐    ┌──────────────────────┐
+       │              │ family_doctor_requests    │    │ family_doctor_history │
+       │              ├─────────────────────────┤    ├──────────────────────┤
+       │              │ id (PK)                  │    │ id (PK)              │
+       │              │ patientId (FK)           │    │ patientId (FK)       │
+       │              │ doctorId (FK)            │    │ previousDoctorId(FK) │
+       │              │ reason                   │    │ newDoctorId (FK)     │
+       │              │ status (enum)            │    │ changeType (enum)    │
+       │              │ responseNote             │    │ changedBy (FK→users) │
+       │              │ respondedBy (FK→users)   │    │ reason               │
+       │              │ timestamps               │    │ changedAt            │
+       │              └─────────────────────────┘    └──────────────────────┘
 ```
 
-#### 2. Système de Notifications
-**Besoin:** Informer les utilisateurs des événements importants
+### 6.2 Enums
 
-**Événements à notifier:**
-- Patient: Rendez-vous approuvé/rejeté
-- Médecin: Nouvelle demande de rendez-vous
-- Admin: Rendez-vous en attente d'approbation
-- Patient: Changement de médecin de famille
-
-**Solution:**
-- Créer une table `notifications`
-- Service de notifications
-- WebSocket ou polling pour notifications en temps réel
-- Email pour notifications importantes
-
-#### 3. Validation Disponibilité Médecin de Famille
-**Besoin:** Vérifier si le médecin de famille est vraiment indisponible avant d'autoriser rendez-vous avec autre médecin
-
-**Implémenté dans:** `AppointmentsService.canPatientBookWithDoctor()`
-
-### 8.2 Priorité Moyenne
-
-#### 4. Limite de Patients par Médecin
-**Besoin:** Éviter qu'un médecin ait trop de patients de famille
-
-**Solution:**
-- Champ `maxFamilyPatients` sur Doctor (déjà dans le design)
-- Validation lors de l'assignation
-- Dashboard pour admin montrant la charge de chaque médecin
-
-#### 5. Demande de Changement de Médecin de Famille
-**Besoin:** Patient peut demander un changement, admin approuve
-
-**Solution:**
-- Nouvelle table `family_doctor_change_requests`
-- Workflow: Patient demande → Admin approuve → Changement effectué
-- Historique des demandes
-
-```typescript
-@Entity('family_doctor_change_requests')
-export class FamilyDoctorChangeRequest {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @Column()
-  patientId: string;
-
-  @Column()
-  currentDoctorId: string;
-
-  @Column()
-  requestedDoctorId: string;
-
-  @Column()
-  reason: string;
-
-  @Column({ default: 'PENDING' })
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-
-  @Column({ nullable: true })
-  reviewedBy: string;
-
-  @Column({ nullable: true })
-  reviewNotes: string;
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
-}
-```
-
-#### 6. Statistiques & Rapports
-**Besoin:** Tableaux de bord pour admin et médecins
-
-**Métriques:**
-- Admin:
-  - Total patients, médecins, rendez-vous
-  - Taux d'occupation des médecins
-  - Rendez-vous en attente
-  - Temps moyen d'approbation
-- Médecin:
-  - Nombre de patients de famille
-  - Rendez-vous du jour/semaine
-  - Taux d'approbation
-  - Patients actifs vs inactifs
-
-### 8.3 Priorité Basse (Future)
-
-#### 7. Liste d'Attente
-**Besoin:** Si un médecin est complet, patient peut s'inscrire
-
-**Solution:**
-- Table `waiting_list`
-- Notification automatique quand une place se libère
-
-#### 8. Préférences Patient
-**Besoin:** Patient peut avoir une liste de médecins préférés
-
-**Solution:**
-- Champ JSONB `preferredDoctors` sur Patient
-- Algorithme de suggestion de rendez-vous
-
-#### 9. Recall Automatique
-**Besoin:** Rendez-vous de suivi pour certaines conditions
-
-**Solution:**
-- Champ `requiresFollowUp` sur Appointment
-- Cron job pour créer rappels automatiques
+| Enum | Valeurs |
+|------|---------|
+| `UserRole` | PATIENT, DOCTOR, ADMIN |
+| `AppointmentStatus` | PENDING, CONFIRMED, REJECTED, COMPLETED, CANCELLED |
+| `FamilyDoctorChangeType` | ASSIGNED, CHANGED, REMOVED |
+| `FamilyDoctorRequestStatus` | PENDING, APPROVED, REJECTED |
+| `AllergyType` | MEDICATION, FOOD, ENVIRONMENTAL, OTHER |
+| `AllergySeverity` | MILD, MODERATE, SEVERE, LIFE_THREATENING |
+| `ConditionStatus` | ACTIVE, RESOLVED, CHRONIC |
+| `MedicationStatus` | ACTIVE, STOPPED, COMPLETED |
 
 ---
 
-## 9. Clarifications & Décisions
+## 7. Système de Permissions
 
-### 9.1 Changement de Médecin de Famille
+### 7.1 Guards
 
-**Question:** Qui peut initier un changement de médecin de famille?
+| Guard | Rôle | Description |
+|-------|------|-------------|
+| `AuthGuard('jwt')` | Tous | Vérifie token JWT valide |
+| `RolesGuard` | Tous | Vérifie rôle via `@Roles()` decorator |
+| `CanManagePatientsGuard` | Admin | Restreint gestion médecin de famille à l'admin |
+| `CanViewPatientGuard` | Admin/Doc/Patient | Admin=tout, Doc=ses patients famille, Patient=lui-même |
 
-**Décision:**
-- ✅ **Admin uniquement** peut changer directement
-- ✅ **Patient peut demander** via une requête que l'admin approuve (feature future)
-- ❌ **Médecin ne peut pas** changer
+### 7.2 Matrice de Permissions
 
-**Fréquence:**
-- ✅ Pas de limite technique (l'admin décide)
-- ✅ Historique complet conservé
-- ⚠️ Considérer une limite de 2 changements/an (configurable) si abus
-
-**Implémentation:**
-```typescript
-// Phase 1: Admin change directement
-POST /api/patients/:id/family-doctor
-
-// Phase 2 (future): Patient demande
-POST /api/patients/:id/family-doctor/request-change
-PATCH /api/admin/family-doctor-requests/:id/approve
-PATCH /api/admin/family-doctor-requests/:id/reject
-```
-
-### 9.2 Approbation des Rendez-vous
-
-**Question:** Ordre d'approbation? (Médecin puis Admin, ou inverse, ou parallèle?)
-
-**Décision:**
-- ✅ **Approbations parallèles** (pas d'ordre imposé)
-- ✅ **Status CONFIRMED** seulement quand les DEUX ont approuvé
-- ✅ **Status REJECTED** dès que l'un des deux rejette
-
-**Logique:**
-```typescript
-if (doctorApproved && adminApproved) {
-  status = CONFIRMED;
-} else if (doctorRejected || adminRejected) {
-  status = REJECTED;
-} else {
-  status = PENDING;
-}
-```
-
-**Timeout:**
-- ⚠️ **Phase 1:** Pas de timeout automatique
-- ✅ **Phase 2 (future):** Auto-rejet après 7 jours sans approbation
-- ✅ **Phase 2 (future):** Notification à J+3 si pas d'action
-
-**Implémentation:**
-```typescript
-// Cron job quotidien
-async checkExpiredAppointments() {
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-  const expiredAppointments = await this.appointmentsRepository.find({
-    where: {
-      status: AppointmentStatus.PENDING,
-      createdAt: LessThan(sevenDaysAgo),
-    },
-  });
-
-  for (const appointment of expiredAppointments) {
-    appointment.status = AppointmentStatus.REJECTED;
-    appointment.adminRejectionReason = 'Auto-rejected: No action taken within 7 days';
-    await this.appointmentsRepository.save(appointment);
-
-    // Notifier le patient
-    await this.notificationsService.notify(appointment.patientId, {
-      type: 'APPOINTMENT_REJECTED',
-      message: 'Your appointment request has been automatically rejected due to timeout',
-    });
-  }
-}
-```
-
-### 9.3 Vérification Disponibilité Médecin de Famille
-
-**Question:** Comment vérifier la disponibilité?
-
-**Décision:**
-- ✅ **Vérifier le schedule** (jours/heures de travail)
-- ✅ **Vérifier les rendez-vous existants** (pas de double booking)
-- ✅ **Vérifier isAvailable** (médecin actif)
-
-**Logique:**
-```typescript
-async isDoctorAvailable(doctorId: string, dateTime: Date, duration: number): Promise<boolean> {
-  const doctor = await this.findOne(doctorId);
-
-  // 1. Médecin existe et actif
-  if (!doctor || !doctor.isAvailable) return false;
-
-  // 2. Vérifier schedule
-  const dayOfWeek = dateTime.toLocaleDateString('en-US', { weekday: 'lowercase' });
-  const timeSlot = doctor.schedule?.[dayOfWeek];
-  if (!timeSlot?.enabled) return false;
-
-  // Vérifier heures
-  const requestedTime = dateTime.toTimeString().slice(0, 5); // "14:30"
-  if (requestedTime < timeSlot.start || requestedTime > timeSlot.end) return false;
-
-  // 3. Vérifier pas de conflit avec rendez-vous existants
-  const endTime = new Date(dateTime.getTime() + duration * 60000);
-  const conflictingAppointment = await this.appointmentsRepository
-    .createQueryBuilder('appointment')
-    .where('appointment.doctorId = :doctorId', { doctorId })
-    .andWhere('appointment.status IN (:...statuses)', {
-      statuses: [AppointmentStatus.CONFIRMED, AppointmentStatus.PENDING]
-    })
-    .andWhere(
-      '(appointment.dateTime < :endTime AND ' +
-      'appointment.dateTime + (appointment.duration || \' minutes\')::interval > :startTime)',
-      { startTime: dateTime, endTime }
-    )
-    .getOne();
-
-  return !conflictingAppointment;
-}
-```
-
-### 9.4 Accès Médecin aux Rendez-vous
-
-**Question:** Un médecin peut-il voir les rendez-vous demandés avec lui par des non-family patients?
-
-**Décision:**
-- ✅ **OUI**, un médecin voit TOUS les rendez-vous demandés avec lui
-- ✅ Mais il ne peut voir les **dossiers médicaux** que de ses patients de famille
-- ✅ Pour approuver un rendez-vous, pas besoin d'accès au dossier complet
-
-**Matrice d'accès:**
-
-| Ressource | Patient de famille | Patient non-famille |
-|-----------|-------------------|---------------------|
-| Rendez-vous avec le médecin | ✅ Voir + Approuver | ✅ Voir + Approuver |
-| Dossier médical complet | ✅ Accès complet | ❌ Pas d'accès |
-| Historique rendez-vous | ✅ Tous | ❌ Aucun |
-
-**Implémentation:**
-```typescript
-// Médecin peut voir tous SES rendez-vous
-@Get('my-appointments')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(UserRole.DOCTOR)
-async getMyAppointments(@Request() req) {
-  return this.appointmentsService.findByDoctor(req.user.doctorId);
-}
-
-// Mais accès dossier médical limité
-@Get('patients/:id/medical-history')
-@UseGuards(AuthGuard('jwt'), RolesGuard, IsFamilyDoctorGuard)
-@Roles(UserRole.DOCTOR)
-async getPatientMedicalHistory(@Param('id') patientId: string) {
-  return this.patientsService.getMedicalHistory(patientId);
-}
-```
-
-### 9.5 Migration Données Existantes
-
-**Question:** Comment gérer les patients existants?
-
-**Décision:**
-- ✅ **Phase 1:** `familyDoctorId` est nullable
-- ✅ Patients existants → `familyDoctorId = null`
-- ✅ Admin assigne progressivement les médecins de famille
-- ✅ Pas d'assignation automatique (décision métier importante)
-
-**Script de migration (optionnel):**
-```typescript
-// Si on veut répartir automatiquement
-async autoAssignFamilyDoctors() {
-  const patientsWithoutFamilyDoctor = await this.patientsRepository.find({
-    where: { familyDoctorId: IsNull() },
-  });
-
-  const doctors = await this.doctorsRepository.find({
-    where: { isAvailable: true },
-  });
-
-  let doctorIndex = 0;
-
-  for (const patient of patientsWithoutFamilyDoctor) {
-    const doctor = doctors[doctorIndex % doctors.length];
-
-    await this.patientsService.assignFamilyDoctor(
-      patient.id,
-      doctor.id,
-      'SYSTEM',
-      'Auto-assigned during migration'
-    );
-
-    doctorIndex++;
-  }
-}
-```
-
-### 9.6 Règles de Validation Supplémentaires
-
-**Décisions additionnelles:**
-
-1. **Rendez-vous dans le passé:**
-   - ❌ Interdit de créer un rendez-vous dans le passé
-   - ✅ Validation: `dateTime > new Date()`
-
-2. **Durée minimum de rendez-vous:**
-   - ✅ Minimum 15 minutes
-   - ✅ Maximum 2 heures
-   - ✅ Multiples de 15 minutes
-
-3. **Délai de création:**
-   - ✅ Minimum 2 heures à l'avance (sauf admin)
-   - ✅ Maximum 3 mois à l'avance
-
-4. **Annulation:**
-   - ✅ Patient peut annuler jusqu'à 24h avant
-   - ✅ Médecin/Admin peuvent annuler à tout moment
-   - ✅ Historique des annulations conservé
-
-5. **Modification:**
-   - ✅ Modification = Annulation + Nouvelle demande
-   - ❌ Pas de modification directe (pour garder l'audit trail)
-
-**Validation DTO:**
-```typescript
-export class CreateAppointmentDto {
-  @IsUUID()
-  patientId: string;
-
-  @IsUUID()
-  doctorId: string;
-
-  @IsDate()
-  @Type(() => Date)
-  @MinDate(new Date(), { message: 'Appointment must be in the future' })
-  dateTime: Date;
-
-  @IsInt()
-  @Min(15)
-  @Max(120)
-  @IsMultiple(15)
-  duration: number;
-
-  @IsOptional()
-  @IsString()
-  reason?: string;
-}
-```
+| Action | Patient | Médecin | Admin |
+|--------|:-------:|:-------:|:-----:|
+| **Patients** | | | |
+| Voir ses propres données | ✅ | — | ✅ |
+| Voir tous les patients | ❌ | ✅ | ✅ |
+| Créer un patient | ❌ | ❌ | ✅ |
+| Modifier un patient | ❌ | ✅ | ✅ |
+| Supprimer un patient | ❌ | ❌ | ✅ |
+| **Médecins** | | | |
+| Voir les médecins | ✅ | ✅ | ✅ |
+| Créer un médecin | ❌ | ❌ | ✅ |
+| Modifier un médecin | ❌ | ✅ (soi) | ✅ |
+| Supprimer un médecin | ❌ | ❌ | ✅ |
+| **Rendez-vous** | | | |
+| Demander un RDV | ✅ | ✅ | ✅ |
+| Approuver (médecin) | ❌ | ✅ (ses RDV) | ❌ |
+| Approuver (admin) | ❌ | ❌ | ✅ |
+| Annuler un RDV | ✅ (sien) | ✅ | ✅ |
+| Compléter un RDV | ❌ | ✅ | ✅ |
+| **Médecin de Famille** | | | |
+| Assigner directement | ❌ | ❌ | ✅ |
+| Demander un médecin de famille | ✅ | ❌ | ❌ |
+| Approuver demande | ❌ | ✅ (les siennes) | ✅ |
+| **Dossiers Médicaux** | | | |
+| Voir son dossier | ✅ | — | ✅ |
+| Voir dossier d'un patient | ❌ | ✅ | ✅ |
+| Modifier un dossier | ❌ | ✅ | ✅ |
 
 ---
 
-## 10. Plan d'Implémentation
+## 8. API Endpoints
 
-### Phase 1: Fondations (Sprint 1 - 2 semaines)
+### 8.1 Auth
 
-#### Semaine 1: Schema & Entities
-- [ ] Créer migration pour Patient (familyDoctorId)
-- [ ] Créer migration pour Doctor (familyPatients, maxFamilyPatients)
-- [ ] Créer migration pour Appointment (approbations)
-- [ ] Créer entity FamilyDoctorHistory
-- [ ] Mettre à jour les entities existantes
-- [ ] Tester les migrations
+| Méthode | Endpoint | Rôles | Description |
+|---------|----------|-------|-------------|
+| POST | `/auth/register` | Public | Inscription |
+| POST | `/auth/login` | Public | Connexion → JWT |
+| GET | `/auth/profile` | Tous | Profil connecté |
 
-#### Semaine 2: Services de Base
-- [ ] PatientsService: assignFamilyDoctor, removeFamilyDoctor, changeFamilyDoctor
-- [ ] FamilyDoctorHistoryService: create, findByPatient
-- [ ] PatientsService: isFamilyDoctor, getFamilyPatients
-- [ ] Tests unitaires services
+### 8.2 Users
 
-### Phase 2: Workflow Rendez-vous (Sprint 2 - 2 semaines)
+| Méthode | Endpoint | Rôles | Description |
+|---------|----------|-------|-------------|
+| GET | `/users` | Admin | Lister utilisateurs |
+| GET | `/users/:id` | Admin | Détail utilisateur |
+| POST | `/users` | Admin | Créer utilisateur |
+| DELETE | `/users/:id` | Admin | Supprimer utilisateur |
 
-#### Semaine 3: Logique Métier
-- [ ] AppointmentsService: canPatientBookWithDoctor
-- [ ] AppointmentsService: isDoctorAvailable
-- [ ] AppointmentsService: createAppointment (avec validations)
-- [ ] AppointmentsService: approveByDoctor, rejectByDoctor
-- [ ] AppointmentsService: approveByAdmin, rejectByAdmin
-- [ ] Tests unitaires
+### 8.3 Patients
 
-#### Semaine 4: Guards & Permissions
-- [ ] IsFamilyDoctorGuard
-- [ ] IsPatientOwnerGuard
-- [ ] CanViewPatientGuard
-- [ ] CanManagePatientsGuard
-- [ ] Tests guards
+| Méthode | Endpoint | Rôles | Description |
+|---------|----------|-------|-------------|
+| GET | `/patients` | Admin, Doctor | Lister patients |
+| GET | `/patients/:id` | Admin, Doctor, Patient | Détail patient |
+| GET | `/patients/me/profile` | Patient | Mon profil |
+| POST | `/patients` | Admin | Créer patient |
+| PUT | `/patients/:id` | Admin, Doctor, Patient | Modifier patient |
+| DELETE | `/patients/:id` | Admin, Doctor | Supprimer patient |
+| POST | `/patients/:id/family-doctor` | Admin | Assigner médecin famille |
+| PATCH | `/patients/:id/family-doctor` | Admin | Changer médecin famille |
+| DELETE | `/patients/:id/family-doctor` | Admin | Retirer médecin famille |
+| GET | `/patients/:id/family-doctor/history` | Admin, Doctor, Patient | Historique |
 
-### Phase 3: API & Controllers (Sprint 3 - 2 semaines)
+### 8.4 Doctors
 
-#### Semaine 5: Endpoints Patients & Doctors
-- [ ] PatientsController: endpoints médecin de famille
-- [ ] PatientsController: endpoint historique
-- [ ] DoctorsController: family-patients
-- [ ] DoctorsController: statistics
-- [ ] DoctorsController: pending-appointments
-- [ ] Tests e2e
+| Méthode | Endpoint | Rôles | Description |
+|---------|----------|-------|-------------|
+| GET | `/doctors` | Tous | Lister médecins |
+| GET | `/doctors/:id` | Tous | Détail médecin |
+| POST | `/doctors` | Admin | Créer médecin |
+| PUT | `/doctors/:id` | Admin, Doctor | Modifier médecin |
+| DELETE | `/doctors/:id` | Admin | Supprimer médecin |
+| PUT | `/doctors/:id/schedule` | Admin, Doctor | Modifier planning |
+| GET | `/doctors/:id/family-patients` | Admin, Doctor | Patients de famille |
+| GET | `/doctors/me/family-patients` | Doctor | Mes patients de famille |
+| GET | `/doctors/:id/pending-appointments` | Doctor | RDV en attente |
+| GET | `/doctors/:id/statistics` | Admin, Doctor | Statistiques |
 
-#### Semaine 6: Endpoints Appointments & Admin
-- [ ] AppointmentsController: approve/reject endpoints
-- [ ] AppointmentsController: pending endpoint
-- [ ] AdminController: patients management
-- [ ] AdminController: statistics
-- [ ] Tests e2e
+### 8.5 Appointments
 
-### Phase 4: Améliorations & Polish (Sprint 4 - 1-2 semaines)
+| Méthode | Endpoint | Rôles | Description |
+|---------|----------|-------|-------------|
+| GET | `/appointments` | Admin | Tous les RDV |
+| GET | `/appointments/me` | Tous | Mes RDV |
+| GET | `/appointments/:id` | Tous | Détail RDV |
+| POST | `/appointments` | Patient, Admin | Créer RDV |
+| PUT | `/appointments/:id` | Tous | Modifier RDV |
+| DELETE | `/appointments/:id` | Admin | Supprimer RDV |
+| PUT | `/appointments/:id/approve` | Admin | Approuver (legacy) |
+| PUT | `/appointments/:id/cancel` | Tous | Annuler |
+| PATCH | `/appointments/:id/approve/doctor` | Doctor | Approbation médecin |
+| PATCH | `/appointments/:id/reject/doctor` | Doctor | Rejet médecin |
+| PATCH | `/appointments/:id/approve/admin` | Admin | Approbation admin |
+| PATCH | `/appointments/:id/reject/admin` | Admin | Rejet admin |
+| GET | `/appointments/pending/all` | Admin | RDV en attente |
+| GET | `/appointments/pending/doctor` | Doctor | Mes RDV en attente |
+| GET | `/appointments/admin/stats` | Admin | Statistiques |
+| GET | `/appointments/check-availability/:doctorId` | Tous | Vérifier disponibilité |
 
-#### Semaine 7: Fonctionnalités Avancées
-- [ ] Validation détaillée (délais, durées, etc.)
-- [ ] Gestion départs médecins
-- [ ] DTOs complets avec validation
-- [ ] Documentation API (Swagger)
+### 8.6 Family Doctor Requests
 
-#### Semaine 8: Tests & Documentation
-- [ ] Tests d'intégration complets
-- [ ] Tests de performance
-- [ ] Documentation utilisateur
-- [ ] Scripts de migration données existantes
+| Méthode | Endpoint | Rôles | Description |
+|---------|----------|-------|-------------|
+| POST | `/family-doctor-requests` | Patient | Créer demande |
+| GET | `/family-doctor-requests` | Admin | Toutes les demandes |
+| GET | `/family-doctor-requests/my` | Patient | Mes demandes |
+| GET | `/family-doctor-requests/:id` | Tous | Détail demande |
+| PATCH | `/family-doctor-requests/:id/approve` | Admin | Approuver (admin) |
+| PATCH | `/family-doctor-requests/:id/reject` | Admin | Rejeter (admin) |
+| GET | `/family-doctor-requests/doctor/my-requests` | Doctor | Demandes reçues |
+| PATCH | `/family-doctor-requests/:id/approve/doctor` | Doctor | Approuver (médecin) |
+| PATCH | `/family-doctor-requests/:id/reject/doctor` | Doctor | Rejeter (médecin) |
 
-### Phase 5 (Future): Notifications & Features Avancées
+### 8.7 Medical Records
 
-- [ ] Système de notifications
+| Méthode | Endpoint | Rôles | Description |
+|---------|----------|-------|-------------|
+| GET | `/patients/:patientId/medical-record` | Admin, Doctor, Patient | Dossier complet |
+| GET | `.../summary` | Admin, Doctor, Patient | Résumé |
+| PATCH | `.../` | Admin, Doctor | Modifier infos vitales |
+| GET/POST | `.../conditions` | Admin, Doctor (POST), Tous (GET) | Conditions |
+| GET/POST | `.../allergies` | Admin, Doctor (POST), Tous (GET) | Allergies |
+| GET/POST | `.../medications` | Admin, Doctor (POST), Tous (GET) | Médicaments |
+| POST | `.../medications/check-allergy` | Admin, Doctor | Vérif. allergie |
+| PATCH | `.../medications/:id/stop` | Admin, Doctor | Arrêter médicament |
+| GET/POST | `.../vaccinations` | Admin, Doctor (POST), Tous (GET) | Vaccinations |
+
+---
+
+## 9. Règles Métier
+
+### 9.1 Rendez-vous (BR-A)
+
+| Code | Règle | Description |
+|------|-------|-------------|
+| BR-A-001 | Contraintes temporelles | Min 2h à l'avance, max 3 mois, durée 15-240 min (multiples de 15) |
+| BR-A-002 | Priorité médecin de famille | Si patient a un MF disponible au créneau demandé → ne peut pas réserver avec un autre médecin |
+| BR-A-003 | Disponibilité (3 niveaux) | 1) Médecin actif 2) Planning inclut le jour/heure 3) Pas de conflit avec RDV existants |
+
+### 9.2 Workflow Approbation (BR-W)
+
+| Code | Règle | Description |
+|------|-------|-------------|
+| BR-W-001 | Double approbation | RDV CONFIRMED seulement si doctorApproved=true ET adminApproved=true |
+| BR-W-002 | Approbation médecin | Médecin ne peut approuver que SES rendez-vous |
+| BR-W-003 | Approbation admin | Admin peut approuver tout RDV |
+| BR-W-004 | Rejet immédiat | Rejet par un seul acteur → statut REJECTED |
+
+### 9.3 Médecin de Famille (BR-MF)
+
+| Code | Règle | Description |
+|------|-------|-------------|
+| BR-MF-001 | Assignation | Seul l'admin peut assigner directement un médecin de famille |
+| BR-MF-002 | Changement | Historique conservé (table family_doctor_history) |
+| BR-MF-003 | Limite | Respect de maxFamilyPatients si défini sur le médecin |
+| BR-MF-004 | Demande patient | Patient peut demander, médecin ou admin approuve |
+
+### 9.4 Dossiers Médicaux (BR-DM)
+
+| Code | Règle | Description |
+|------|-------|-------------|
+| BR-DM-007 | Vérification allergie | Avant prescription, vérifier allergies médicamenteuses du patient |
+| BR-DM-008 | Override allergie | Médecin peut forcer avec `forceOverrideAllergy=true` |
+| BR-DM-009 | Traçabilité | `prescribedBy`, `diagnosedBy`, `administeredBy` auto-renseignés |
+
+---
+
+## 10. Plan d'Évolution
+
+### 10.1 Fonctionnalités Implémentées ✅
+
+- [x] Authentification JWT avec rôles
+- [x] CRUD Patients, Médecins, Utilisateurs
+- [x] Prise de rendez-vous avec vérification disponibilité
+- [x] Double approbation (médecin + admin)
+- [x] Médecin de famille (assignation, changement, historique)
+- [x] Demandes de médecin de famille (patient → médecin/admin)
+- [x] Dossiers médicaux complets (conditions, allergies, médicaments, vaccinations)
+- [x] Vérification interaction allergie/médicament
+- [x] Calendrier rendez-vous (semaine/mois/année)
+- [x] Historique consultations avec filtres (date, nom, âge)
+- [x] Boîte de réception médecin (requests)
+- [x] Administration complète (patients, médecins, demandes)
+
+### 10.2 Améliorations Futures
+
+- [ ] Système de notifications (in-app, email)
 - [ ] WebSocket pour temps réel
-- [ ] Email notifications
-- [ ] Demandes de changement médecin de famille
-- [ ] Liste d'attente
-- [ ] Statistiques avancées
-- [ ] Cron jobs (timeouts, rappels)
+- [ ] Auto-rejet après 7 jours sans action
+- [ ] Tableau de bord statistiques avancées
+- [ ] Liste d'attente médecin
+- [ ] Préférences patient (médecins favoris)
+- [ ] Rappels automatiques de suivi
+- [ ] Documentation API (Swagger/OpenAPI)
+- [ ] Tests unitaires et e2e
+- [ ] Déploiement (CI/CD, Docker)
 
 ---
 
-## Annexes
-
-### A. Checklist de Sécurité
-
-- [ ] Toutes les routes sont protégées par AuthGuard
-- [ ] Guards de permission sur routes sensibles
-- [ ] Validation des entrées utilisateur (DTOs)
-- [ ] Pas d'exposition de données sensibles (passwords, etc.)
-- [ ] Audit trail pour actions importantes
-- [ ] Rate limiting sur API
-- [ ] HTTPS obligatoire en production
-- [ ] Tokens JWT sécurisés
-
-### B. Checklist de Performance
-
-- [ ] Index sur clés étrangères
-- [ ] Index sur champs de recherche fréquents
-- [ ] Eager loading optimisé
-- [ ] Pagination sur listes longues
-- [ ] Cache pour données fréquentes
-- [ ] Requêtes N+1 évitées
-
-### C. Index de Base de Données
-
-```sql
--- Patients
-CREATE INDEX "IDX_patients_familyDoctorId" ON "patients" ("familyDoctorId");
-CREATE INDEX "IDX_patients_userId" ON "patients" ("userId");
-
--- Appointments
-CREATE INDEX "IDX_appointments_patientId" ON "appointments" ("patientId");
-CREATE INDEX "IDX_appointments_doctorId" ON "appointments" ("doctorId");
-CREATE INDEX "IDX_appointments_status" ON "appointments" ("status");
-CREATE INDEX "IDX_appointments_dateTime" ON "appointments" ("dateTime");
-CREATE INDEX "IDX_appointments_pending" ON "appointments" ("status")
-  WHERE "status" = 'PENDING';
-
--- Family Doctor History
-CREATE INDEX "IDX_history_patientId" ON "family_doctor_history" ("patientId");
-CREATE INDEX "IDX_history_changedAt" ON "family_doctor_history" ("changedAt");
-```
-
-### D. Variables d'Environnement
-
-```env
-# Appointments
-APPOINTMENT_MIN_ADVANCE_HOURS=2
-APPOINTMENT_MAX_ADVANCE_MONTHS=3
-APPOINTMENT_MIN_DURATION_MINUTES=15
-APPOINTMENT_MAX_DURATION_MINUTES=120
-APPOINTMENT_AUTO_REJECT_DAYS=7
-
-# Notifications
-ENABLE_EMAIL_NOTIFICATIONS=true
-ENABLE_PUSH_NOTIFICATIONS=false
-EMAIL_FROM=noreply@clinic.com
-
-# Limits
-MAX_FAMILY_PATIENTS_DEFAULT=100
-```
-
----
-
-**Document Version:** 1.0
-**Last Updated:** 2026-02-14
-**Status:** ✅ Prêt pour implémentation
-**Next Review:** Après Phase 1
+**Document Version:** 2.0
+**Last Updated:** 2026-02-19
+**Status:** ✅ Architecture documentée avec cas d'utilisation et diagrammes de séquence

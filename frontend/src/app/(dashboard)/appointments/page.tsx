@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { appointments, doctors, patients } from '@/lib/api';
-import { Appointment, AppointmentStatus, Doctor, UserRole, Patient } from '@/types';
+import { appointments, doctors, patients, systemSettings } from '@/lib/api';
+import { Appointment, AppointmentStatus, Doctor, UserRole, Patient, SystemSetting } from '@/types';
 import { useAuth } from '@/lib/auth-context';
 import { CheckCircle, XCircle, Clock, Calendar as CalendarIcon, List, Plus, User } from 'lucide-react';
 
@@ -25,11 +25,16 @@ export default function DoctorAppointmentsPage() {
   const [patientList, setPatientList] = useState<Patient[]>([]);
   const [doctorList, setDoctorList] = useState<Doctor[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectingAppointmentId, setRejectingAppointmentId] = useState<string>('');
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [minDuration, setMinDuration] = useState(15);
+  const [maxDuration, setMaxDuration] = useState(30);
   const [newAppointment, setNewAppointment] = useState({
     patientId: '',
     doctorId: '',
     dateTime: '',
-    duration: 30,
+    duration: 15,
     reason: '',
   });
 
@@ -46,8 +51,22 @@ export default function DoctorAppointmentsPage() {
   }, [user, doctorId, patientId, currentDate, calendarView]);
 
   const loadDoctorId = async () => {
-    console.log('loadDoctorId called, user role:', user?.role);
     try {
+      // Load system settings for duration limits
+      try {
+        const settingsRes = await systemSettings.getAll();
+        const settingsMap: Record<string, string> = {};
+        settingsRes.data.forEach((s: SystemSetting) => { settingsMap[s.key] = s.value; });
+        if (settingsMap['min_appointment_duration']) {
+          setMinDuration(parseInt(settingsMap['min_appointment_duration'], 10));
+        }
+        if (settingsMap['max_appointment_duration']) {
+          setMaxDuration(parseInt(settingsMap['max_appointment_duration'], 10));
+        }
+      } catch {
+        // Settings may not be accessible for non-admin users, use defaults
+      }
+
       if (user?.role === UserRole.DOCTOR) {
         const res = await doctors.getAll();
         const doctor = res.data.find((d: Doctor) => d.userId === user.id);
@@ -171,6 +190,30 @@ export default function DoctorAppointmentsPage() {
     }
   };
 
+  const handleReject = async () => {
+    if (!rejectionReason.trim()) {
+      setMessage('Please provide a reason for rejection.');
+      return;
+    }
+    try {
+      if (user?.role === UserRole.ADMIN) {
+        await appointments.rejectByAdmin(rejectingAppointmentId, rejectionReason);
+        setMessage('Appointment rejected by admin.');
+      } else if (user?.role === UserRole.DOCTOR) {
+        await appointments.rejectByDoctor(rejectingAppointmentId, rejectionReason);
+        setMessage('Appointment rejected.');
+      }
+      setShowRejectModal(false);
+      setRejectingAppointmentId('');
+      setRejectionReason('');
+      setSelectedAppointment(null);
+      loadAppointments();
+    } catch (err: any) {
+      console.error('Error rejecting appointment:', err);
+      setMessage(err.response?.data?.message || 'Error rejecting appointment.');
+    }
+  };
+
   const handleCreateAppointment = async () => {
     try {
       if (user?.role === UserRole.PATIENT) {
@@ -196,11 +239,11 @@ export default function DoctorAppointmentsPage() {
         setMessage('Appointment created successfully!');
       }
       setShowCreateModal(false);
-      setNewAppointment({ patientId: '', doctorId: '', dateTime: '', duration: 30, reason: '' });
+      setNewAppointment({ patientId: '', doctorId: '', dateTime: '', duration: minDuration, reason: '' });
       loadAppointments();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating appointment:', err);
-      setMessage('Error creating appointment. Please try again.');
+      setMessage(err.response?.data?.message || 'Error creating appointment. Please try again.');
     }
   };
 
@@ -210,6 +253,8 @@ export default function DoctorAppointmentsPage() {
         return <CheckCircle className="text-green-500" size={20} />;
       case 'CANCELLED':
         return <XCircle className="text-red-500" size={20} />;
+      case 'REJECTED':
+        return <XCircle className="text-orange-500" size={20} />;
       case 'COMPLETED':
         return <CheckCircle className="text-blue-500" size={20} />;
       default:
@@ -223,6 +268,8 @@ export default function DoctorAppointmentsPage() {
         return 'bg-green-100 text-green-800 border-green-200';
       case 'CANCELLED':
         return 'bg-red-100 text-red-800 border-red-200';
+      case 'REJECTED':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'COMPLETED':
         return 'bg-blue-100 text-blue-800 border-blue-200';
       default:
@@ -320,7 +367,11 @@ export default function DoctorAppointmentsPage() {
       </div>
 
       {message && (
-        <div className="bg-green-50 text-green-600 p-4 rounded-lg mb-6">{message}</div>
+        <div className={`p-4 rounded-lg mb-6 ${
+          message.toLowerCase().includes('error') || message.toLowerCase().includes('erreur') || message.toLowerCase().includes('atteint') || message.toLowerCase().includes('durée') || message.toLowerCase().includes('maximum')
+            ? 'bg-red-50 text-red-600 border border-red-200'
+            : 'bg-green-50 text-green-600 border border-green-200'
+        }`}>{message}</div>
       )}
 
       {viewMode === 'calendar' && (
@@ -543,6 +594,19 @@ export default function DoctorAppointmentsPage() {
                               <p className="text-sm text-gray-900">{apt.reason}</p>
                             </div>
                           )}
+
+                          {apt.status === AppointmentStatus.REJECTED && apt.doctorRejectionReason && (
+                            <div className="mt-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                              <p className="text-xs font-semibold text-orange-900 mb-1 uppercase tracking-wide">Rejection Reason (Doctor)</p>
+                              <p className="text-sm text-orange-800">{apt.doctorRejectionReason}</p>
+                            </div>
+                          )}
+                          {apt.status === AppointmentStatus.REJECTED && apt.adminRejectionReason && (
+                            <div className="mt-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                              <p className="text-xs font-semibold text-orange-900 mb-1 uppercase tracking-wide">Rejection Reason (Admin)</p>
+                              <p className="text-sm text-orange-800">{apt.adminRejectionReason}</p>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <>
@@ -614,6 +678,16 @@ export default function DoctorAppointmentsPage() {
                               className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
                             >
                               Approve
+                            </button>
+                            <button
+                              onClick={() => {
+                                setRejectingAppointmentId(apt.id);
+                                setRejectionReason('');
+                                setShowRejectModal(true);
+                              }}
+                              className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+                            >
+                              Reject
                             </button>
                             <button
                               onClick={() => handleCancel(apt.id)}
@@ -787,6 +861,25 @@ export default function DoctorAppointmentsPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Rejection Reason */}
+                {selectedAppointment.status === AppointmentStatus.REJECTED && (
+                  <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                    <h3 className="font-semibold text-orange-900 mb-2">Appointment Rejected</h3>
+                    {selectedAppointment.doctorRejectionReason && (
+                      <div className="mb-2">
+                        <p className="text-xs font-medium text-orange-700 mb-1">Doctor's Reason:</p>
+                        <p className="text-sm text-orange-800">{selectedAppointment.doctorRejectionReason}</p>
+                      </div>
+                    )}
+                    {selectedAppointment.adminRejectionReason && (
+                      <div>
+                        <p className="text-xs font-medium text-orange-700 mb-1">Admin's Reason:</p>
+                        <p className="text-sm text-orange-800">{selectedAppointment.adminRejectionReason}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="mb-4 space-y-2">
@@ -798,6 +891,18 @@ export default function DoctorAppointmentsPage() {
                 <p><span className="font-medium">Time:</span> {new Date(selectedAppointment.dateTime).toLocaleTimeString()}</p>
                 <p><span className="font-medium">Duration:</span> {selectedAppointment.duration} minutes</p>
                 {selectedAppointment.reason && <p><span className="font-medium">Reason:</span> {selectedAppointment.reason}</p>}
+                {selectedAppointment.status === AppointmentStatus.REJECTED && selectedAppointment.doctorRejectionReason && (
+                  <div className="mt-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <p className="text-xs font-semibold text-orange-900 mb-1">Doctor Rejection Reason</p>
+                    <p className="text-sm text-orange-800">{selectedAppointment.doctorRejectionReason}</p>
+                  </div>
+                )}
+                {selectedAppointment.status === AppointmentStatus.REJECTED && selectedAppointment.adminRejectionReason && (
+                  <div className="mt-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <p className="text-xs font-semibold text-orange-900 mb-1">Admin Rejection Reason</p>
+                    <p className="text-sm text-orange-800">{selectedAppointment.adminRejectionReason}</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -896,6 +1001,18 @@ export default function DoctorAppointmentsPage() {
                   >
                     Close
                   </button>
+                  {selectedAppointment.status === AppointmentStatus.PENDING && (
+                    <button
+                      onClick={() => {
+                        setRejectingAppointmentId(selectedAppointment.id);
+                        setRejectionReason('');
+                        setShowRejectModal(true);
+                      }}
+                      className="flex-1 bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 transition-colors font-medium"
+                    >
+                      Reject
+                    </button>
+                  )}
                   <button
                     onClick={() => handleStatusUpdate(selectedAppointment.id, selectedAppointment.status)}
                     className="flex-1 bg-primary-500 text-white py-3 rounded-lg hover:bg-primary-600 transition-colors"
@@ -904,6 +1021,51 @@ export default function DoctorAppointmentsPage() {
                   </button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white p-6 rounded-xl w-full max-w-md">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Reject Appointment</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Please provide a reason for rejecting this appointment. The reason will be visible to the patient.
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Rejection Reason <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                rows={4}
+                placeholder="Explain why you are rejecting this appointment..."
+                autoFocus
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectingAppointmentId('');
+                  setRejectionReason('');
+                }}
+                className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReject}
+                disabled={!rejectionReason.trim()}
+                className="flex-1 bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
+              >
+                Confirm Rejection
+              </button>
             </div>
           </div>
         </div>
@@ -970,16 +1132,34 @@ export default function DoctorAppointmentsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Duration (minutes)
               </label>
-              <select
+              <input
+                type="number"
+                min={minDuration}
+                max={maxDuration}
+                step={5}
                 value={newAppointment.duration}
-                onChange={(e) => setNewAppointment({ ...newAppointment, duration: parseInt(e.target.value) })}
-                className="w-full p-3 border border-gray-200 rounded-lg"
-              >
-                <option value={15}>15 minutes</option>
-                <option value={30}>30 minutes</option>
-                <option value={45}>45 minutes</option>
-                <option value={60}>60 minutes</option>
-              </select>
+                onChange={(e) => setNewAppointment({ ...newAppointment, duration: parseInt(e.target.value) || minDuration })}
+                className={`w-full p-3 border rounded-lg ${
+                  newAppointment.duration < minDuration || newAppointment.duration > maxDuration
+                    ? 'border-red-400 bg-red-50'
+                    : 'border-gray-200'
+                }`}
+              />
+              {newAppointment.duration < minDuration && (
+                <p className="text-xs text-red-500 mt-1">
+                  La durée ne peut pas être inférieure à {minDuration} minutes.
+                </p>
+              )}
+              {newAppointment.duration > maxDuration && (
+                <p className="text-xs text-red-500 mt-1">
+                  La durée ne peut pas dépasser {maxDuration} minutes.
+                </p>
+              )}
+              {newAppointment.duration >= minDuration && newAppointment.duration <= maxDuration && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Choisissez une durée entre {minDuration} et {maxDuration} minutes.
+                </p>
+              )}
             </div>
 
             <div className="mb-4">
@@ -999,7 +1179,7 @@ export default function DoctorAppointmentsPage() {
               <button
                 onClick={() => {
                   setShowCreateModal(false);
-                  setNewAppointment({ patientId: '', doctorId: '', dateTime: '', duration: 30, reason: '' });
+                  setNewAppointment({ patientId: '', doctorId: '', dateTime: '', duration: minDuration, reason: '' });
                 }}
                 className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg hover:bg-gray-200 transition-colors"
               >
@@ -1008,6 +1188,7 @@ export default function DoctorAppointmentsPage() {
               <button
                 onClick={handleCreateAppointment}
                 disabled={
+                  newAppointment.duration < minDuration || newAppointment.duration > maxDuration ||
                   (user?.role === UserRole.PATIENT && (!newAppointment.doctorId || !newAppointment.dateTime)) ||
                   (user?.role === UserRole.DOCTOR && (!newAppointment.patientId || !newAppointment.dateTime))
                 }

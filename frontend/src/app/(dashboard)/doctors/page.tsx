@@ -179,6 +179,11 @@ export default function DoctorsPage() {
     return request;
   };
 
+  const isGeneralPractitioner = (doctor: Doctor) => {
+    const specialty = doctor.specialty.toLowerCase();
+    return specialty === 'general' || specialty === 'généraliste';
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -286,6 +291,13 @@ export default function DoctorsPage() {
                         <div className="flex-1 flex items-center justify-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-lg border border-green-200 text-sm">
                           <Heart size={16} className="fill-current" />
                           My Doctor
+                        </div>
+                      );
+                    } else if (!isGeneralPractitioner(doctor)) {
+                      return (
+                        <div className="flex-1 flex items-center justify-center gap-2 bg-gray-50 text-gray-400 px-4 py-2 rounded-lg border border-gray-200 text-sm cursor-not-allowed" title="Seul un médecin généraliste peut être médecin de famille">
+                          <Users size={16} />
+                          Specialist
                         </div>
                       );
                     } else if (requestStatus) {

@@ -9,8 +9,8 @@ interface AllergiesSectionProps {
   patientId: string;
   allergies: Allergy[];
   onAdd: (data: any) => Promise<void>;
-  onUpdate: (allergyId: string, data: any) => Promise<void>;
-  onDelete: (allergyId: string) => Promise<void>;
+  onUpdate?: (allergyId: string, data: any) => Promise<void>;
+  onDelete?: (allergyId: string) => Promise<void>;
   readOnly?: boolean;
 }
 
@@ -35,7 +35,7 @@ export default function AllergiesSection({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingId) {
+    if (editingId && onUpdate) {
       await onUpdate(editingId, formData);
       setEditingId(null);
     } else {
@@ -249,20 +249,24 @@ export default function AllergiesSection({
                   <p className="text-sm text-gray-700 mt-2">{allergy.notes}</p>
                 )}
               </div>
-              {!readOnly && (
+              {!readOnly && (onUpdate || onDelete) && (
                 <div className="flex gap-2 ml-4">
-                  <button
-                    onClick={() => handleEdit(allergy)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  >
-                    <Edit2 size={18} />
-                  </button>
-                  <button
-                    onClick={() => onDelete(allergy.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                  {onUpdate && (
+                    <button
+                      onClick={() => handleEdit(allergy)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
+                      <Edit2 size={18} />
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      onClick={() => onDelete(allergy.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  )}
                 </div>
               )}
             </div>

@@ -13,6 +13,7 @@ import {
 import { Patient } from '../patients/entities/patient.entity';
 import { Doctor } from '../doctors/entities/doctor.entity';
 import { CreateFamilyDoctorRequestDto, RespondToRequestDto } from './dto/family-doctor-request.dto';
+import { SystemSettingsService } from '../system-settings/system-settings.service';
 
 @Injectable()
 export class FamilyDoctorRequestsService {
@@ -23,6 +24,7 @@ export class FamilyDoctorRequestsService {
     private patientsRepository: Repository<Patient>,
     @InjectRepository(Doctor)
     private doctorsRepository: Repository<Doctor>,
+    private systemSettingsService: SystemSettingsService,
   ) {}
 
   async create(
@@ -47,25 +49,31 @@ export class FamilyDoctorRequestsService {
       throw new NotFoundException('Doctor not found');
     }
 
-    // Check if patient already has a pending request for this doctor
+    // A family doctor must be a general practitioner
+    if (doctor.specialty.toLowerCase() !== 'general' && doctor.specialty.toLowerCase() !== 'généraliste') {
+      throw new BadRequestException(
+        'Seul un médecin généraliste peut être désigné comme médecin de famille. Ce médecin est spécialiste.',
+      );
+    }
+
+    // Check if patient already has a family doctor assigned
+    if (patient.familyDoctorId) {
+      throw new BadRequestException(
+        'You already have a family doctor. You cannot request another one.',
+      );
+    }
+
+    // Check if patient already has a pending request
     const existingRequest = await this.requestsRepository.findOne({
       where: {
         patientId: patient.id,
-        doctorId: createDto.doctorId,
         status: FamilyDoctorRequestStatus.PENDING,
       },
     });
 
     if (existingRequest) {
       throw new BadRequestException(
-        'You already have a pending request for this doctor',
-      );
-    }
-
-    // Check if this doctor is already the patient's family doctor
-    if (patient.familyDoctorId === createDto.doctorId) {
-      throw new BadRequestException(
-        'This doctor is already your family doctor',
+        'You already have a pending family doctor request',
       );
     }
 
@@ -127,21 +135,16 @@ export class FamilyDoctorRequestsService {
       throw new BadRequestException('Request has already been processed');
     }
 
-    // Check if doctor has reached max family patients
-    const doctor = await this.doctorsRepository.findOne({
-      where: { id: request.doctorId },
+    // Check if doctor has reached max family patients (system setting)
+    const maxFamilyPatients = await this.systemSettingsService.getNumberValue('max_family_patients_per_doctor');
+    const currentCount = await this.patientsRepository.count({
+      where: { familyDoctorId: request.doctorId },
     });
 
-    if (doctor.maxFamilyPatients) {
-      const currentCount = await this.patientsRepository.count({
-        where: { familyDoctorId: doctor.id },
-      });
-
-      if (currentCount >= doctor.maxFamilyPatients) {
-        throw new BadRequestException(
-          'Doctor has reached maximum capacity for family patients',
-        );
-      }
+    if (currentCount >= maxFamilyPatients) {
+      throw new BadRequestException(
+        `Ce médecin a atteint le nombre maximum de patients en tant que médecin de famille (${maxFamilyPatients}).`,
+      );
     }
 
     // Update the patient's family doctor
@@ -210,21 +213,16 @@ export class FamilyDoctorRequestsService {
       throw new BadRequestException('Request has already been processed');
     }
 
-    // Check if doctor has reached max family patients
-    const doctor = await this.doctorsRepository.findOne({
-      where: { id: doctorId },
+    // Check if doctor has reached max family patients (system setting)
+    const maxFamilyPatients = await this.systemSettingsService.getNumberValue('max_family_patients_per_doctor');
+    const currentCount = await this.patientsRepository.count({
+      where: { familyDoctorId: doctorId },
     });
 
-    if (doctor.maxFamilyPatients) {
-      const currentCount = await this.patientsRepository.count({
-        where: { familyDoctorId: doctorId },
-      });
-
-      if (currentCount >= doctor.maxFamilyPatients) {
-        throw new BadRequestException(
-          'You have reached maximum capacity for family patients',
-        );
-      }
+    if (currentCount >= maxFamilyPatients) {
+      throw new BadRequestException(
+        `Vous avez atteint le nombre maximum de patients en tant que médecin de famille (${maxFamilyPatients}).`,
+      );
     }
 
     // Update the patient's family doctor

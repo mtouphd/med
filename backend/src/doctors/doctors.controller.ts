@@ -31,43 +31,92 @@ export class DoctorsController {
     return this.doctorsService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.doctorsService.findOne(id);
-  }
-
   @Post()
   @Roles(UserRole.ADMIN)
   async create(@Body() createDoctorDto: CreateDoctorDto | CreateDoctorWithUserDto) {
-    // Vérifier si les données de l'utilisateur sont fournies
     if ('user' in createDoctorDto) {
-      // Créer l'utilisateur d'abord
       const user = await this.usersService.create(createDoctorDto.user);
-
-      // Créer le doctor avec le userId
       const doctorData: CreateDoctorDto = {
         userId: user.id,
         specialty: createDoctorDto.specialty,
         licenseNumber: createDoctorDto.licenseNumber,
         bio: createDoctorDto.bio,
       };
-
       return this.doctorsService.create(doctorData);
     }
-
-    // Ancien format: userId déjà fourni
     return this.doctorsService.create(createDoctorDto as CreateDoctorDto);
   }
 
+  // ==================== ME ROUTES (must come before :id routes) ====================
+
+  /**
+   * GET /doctors/me/family-patients
+   * Récupérer mes patients de famille (médecin connecté)
+   */
+  @Get('me/family-patients')
+  @Roles(UserRole.DOCTOR)
+  async getMyFamilyPatients(@Request() req) {
+    const doctor = await this.doctorsRepository.findOne({
+      where: { userId: req.user.id },
+    });
+
+    if (!doctor) {
+      return [];
+    }
+
+    return this.patientsService.getFamilyPatients(doctor.id);
+  }
+
+  /**
+   * GET /doctors/me/pending-appointments
+   * Récupérer mes rendez-vous en attente (médecin connecté)
+   */
+  @Get('me/pending-appointments')
+  @Roles(UserRole.DOCTOR)
+  async getMyPendingAppointments(@Request() req) {
+    const doctor = await this.doctorsRepository.findOne({
+      where: { userId: req.user.id },
+    });
+
+    if (!doctor) {
+      return [];
+    }
+
+    return this.appointmentsService.getDoctorPendingAppointments(doctor.id);
+  }
+
+  /**
+   * GET /doctors/me/statistics
+   * Récupérer mes statistiques (médecin connecté)
+   */
+  @Get('me/statistics')
+  @Roles(UserRole.DOCTOR)
+  async getMyStatistics(@Request() req) {
+    const doctor = await this.doctorsRepository.findOne({
+      where: { userId: req.user.id },
+    });
+
+    if (!doctor) {
+      return null;
+    }
+
+    return this.getDoctorStatistics(doctor.id);
+  }
+
+  // ==================== :ID ROUTES ====================
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.doctorsService.findOne(id);
+  }
+
   @Put(':id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.DOCTOR)
   update(@Param('id') id: string, @Body() updateDoctorDto: UpdateDoctorDto) {
     return this.doctorsService.update(id, updateDoctorDto);
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.ADMIN)
   remove(@Param('id') id: string) {
     return this.doctorsService.remove(id);
@@ -93,24 +142,6 @@ export class DoctorsController {
   }
 
   /**
-   * GET /doctors/me/family-patients
-   * Récupérer mes patients de famille (médecin connecté)
-   */
-  @Get('me/family-patients')
-  @Roles(UserRole.DOCTOR)
-  async getMyFamilyPatients(@Request() req) {
-    const doctor = await this.doctorsRepository.findOne({
-      where: { userId: req.user.id },
-    });
-
-    if (!doctor) {
-      return [];
-    }
-
-    return this.patientsService.getFamilyPatients(doctor.id);
-  }
-
-  /**
    * GET /doctors/:id/pending-appointments
    * Récupérer les rendez-vous en attente d'un médecin
    * Accessible par: Admin, le médecin lui-même
@@ -119,24 +150,6 @@ export class DoctorsController {
   @Roles(UserRole.ADMIN, UserRole.DOCTOR)
   async getDoctorPendingAppointments(@Param('id') doctorId: string) {
     return this.appointmentsService.getDoctorPendingAppointments(doctorId);
-  }
-
-  /**
-   * GET /doctors/me/pending-appointments
-   * Récupérer mes rendez-vous en attente (médecin connecté)
-   */
-  @Get('me/pending-appointments')
-  @Roles(UserRole.DOCTOR)
-  async getMyPendingAppointments(@Request() req) {
-    const doctor = await this.doctorsRepository.findOne({
-      where: { userId: req.user.id },
-    });
-
-    if (!doctor) {
-      return [];
-    }
-
-    return this.appointmentsService.getDoctorPendingAppointments(doctor.id);
   }
 
   /**
@@ -160,23 +173,5 @@ export class DoctorsController {
       pendingAppointments: pendingAppointments.length,
       canAcceptNewPatients: !doctor.maxFamilyPatients || familyPatients.length < doctor.maxFamilyPatients,
     };
-  }
-
-  /**
-   * GET /doctors/me/statistics
-   * Récupérer mes statistiques (médecin connecté)
-   */
-  @Get('me/statistics')
-  @Roles(UserRole.DOCTOR)
-  async getMyStatistics(@Request() req) {
-    const doctor = await this.doctorsRepository.findOne({
-      where: { userId: req.user.id },
-    });
-
-    if (!doctor) {
-      return null;
-    }
-
-    return this.getDoctorStatistics(doctor.id);
   }
 }

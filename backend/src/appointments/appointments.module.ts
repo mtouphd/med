@@ -6,11 +6,13 @@ import { Patient } from '../patients/entities/patient.entity';
 import { AppointmentsService } from './appointments.service';
 import { AppointmentsController } from './appointments.controller';
 import { PatientsModule } from '../patients/patients.module';
+import { SystemSettingsModule } from '../system-settings/system-settings.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Appointment, Doctor, Patient]),
     forwardRef(() => PatientsModule),
+    SystemSettingsModule,
   ],
   controllers: [AppointmentsController],
   providers: [AppointmentsService],

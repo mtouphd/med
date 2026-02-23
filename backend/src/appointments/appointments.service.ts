@@ -7,6 +7,7 @@ import { Doctor } from '../doctors/entities/doctor.entity';
 import { Patient } from '../patients/entities/patient.entity';
 import { User } from '../users/entities/user.entity';
 import { PatientsService } from '../patients/patients.service';
+import { SystemSettingsService } from '../system-settings/system-settings.service';
 
 @Injectable()
 export class AppointmentsService {
@@ -19,6 +20,7 @@ export class AppointmentsService {
     private patientsRepository: Repository<Patient>,
     @Inject(forwardRef(() => PatientsService))
     private patientsService: PatientsService,
+    private systemSettingsService: SystemSettingsService,
   ) {}
 
   async findAll() {
@@ -80,10 +82,48 @@ export class AppointmentsService {
       patientId = createAppointmentDto.patientId;
     }
 
+    // Validate duration against system settings
+    const duration = createAppointmentDto.duration || 30;
+    const minDuration = await this.systemSettingsService.getNumberValue('min_appointment_duration');
+    const maxDuration = await this.systemSettingsService.getNumberValue('max_appointment_duration');
+
+    if (duration < minDuration) {
+      throw new BadRequestException(
+        `La durée minimale d'un rendez-vous est de ${minDuration} minutes.`,
+      );
+    }
+    if (duration > maxDuration) {
+      throw new BadRequestException(
+        `La durée maximale d'un rendez-vous est de ${maxDuration} minutes.`,
+      );
+    }
+
+    // Validate max appointments per day
+    const appointmentDate = new Date(createAppointmentDto.dateTime);
+    const maxPerDay = await this.systemSettingsService.getNumberValue('max_appointments_per_day');
+    const startOfDay = new Date(appointmentDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(appointmentDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const dayCount = await this.appointmentsRepository.count({
+      where: {
+        doctorId: createAppointmentDto.doctorId,
+        dateTime: Between(startOfDay, endOfDay),
+        status: In([AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED]),
+      },
+    });
+
+    if (dayCount >= maxPerDay) {
+      throw new BadRequestException(
+        `Ce médecin a atteint le nombre maximum de rendez-vous par jour (${maxPerDay}). Veuillez choisir une autre date.`,
+      );
+    }
+
     const existingAppointment = await this.appointmentsRepository.findOne({
       where: {
         doctorId: createAppointmentDto.doctorId,
-        dateTime: new Date(createAppointmentDto.dateTime),
+        dateTime: appointmentDate,
         status: AppointmentStatus.CONFIRMED,
       },
     });
@@ -96,7 +136,7 @@ export class AppointmentsService {
       ...createAppointmentDto,
       patientId,
       doctorId: doctor.id,
-      dateTime: new Date(createAppointmentDto.dateTime),
+      dateTime: appointmentDate,
     });
 
     return this.appointmentsRepository.save(appointment);
@@ -293,16 +333,31 @@ export class AppointmentsService {
     const dayOfWeek = dateTime
       .toLocaleDateString('en-US', { weekday: 'long' })
       .toLowerCase();
-    const timeSlot = doctor.schedule?.[dayOfWeek];
+    const daySchedule = doctor.schedule?.[dayOfWeek];
 
-    if (!timeSlot || !timeSlot.enabled) {
+    if (!daySchedule) {
       return false;
     }
 
-    // Vérifier heures
-    const requestedTime = dateTime.toTimeString().slice(0, 5); // "14:30"
-    if (requestedTime < timeSlot.start || requestedTime > timeSlot.end) {
-      return false;
+    // Detect format: new slot-based format has hour keys like "08:00"
+    const isNewFormat = daySchedule['06:00'] !== undefined || daySchedule['08:00'] !== undefined;
+
+    if (isNewFormat) {
+      // New slot-based format: { "06:00": "available", "07:00": "unavailable", ... }
+      const requestedHour = dateTime.toTimeString().slice(0, 2).padStart(2, '0') + ':00';
+      const slotStatus = daySchedule[requestedHour];
+      if (!slotStatus || slotStatus === 'unavailable') {
+        return false;
+      }
+    } else {
+      // Old format: { start: "08:00", end: "17:00", enabled: true }
+      if (!daySchedule.enabled) {
+        return false;
+      }
+      const requestedTime = dateTime.toTimeString().slice(0, 5);
+      if (requestedTime < daySchedule.start || requestedTime > daySchedule.end) {
+        return false;
+      }
     }
 
     // 3. Vérifier pas de conflit avec rendez-vous existants
@@ -414,14 +469,50 @@ export class AppointmentsService {
       );
     }
 
-    // Validation 3: Durée 15-240 min, multiples de 15
-    if (duration < 15 || duration > 240 || duration % 15 !== 0) {
+    // Validation 3: Durée selon paramètres système
+    const minDuration = await this.systemSettingsService.getNumberValue('min_appointment_duration');
+    const maxDuration = await this.systemSettingsService.getNumberValue('max_appointment_duration');
+
+    if (duration < minDuration) {
       throw new BadRequestException(
-        'Duration must be between 15-240 minutes in multiples of 15',
+        `La durée minimale d'un rendez-vous est de ${minDuration} minutes.`,
       );
     }
 
-    // Validation 4: Règle médecin de famille (BR-A-002)
+    if (duration > maxDuration) {
+      throw new BadRequestException(
+        `La durée maximale d'un rendez-vous est de ${maxDuration} minutes.`,
+      );
+    }
+
+    if (duration % 15 !== 0) {
+      throw new BadRequestException(
+        'La durée doit être un multiple de 15 minutes.',
+      );
+    }
+
+    // Validation 4: Nombre max de rendez-vous par jour pour le médecin
+    const maxPerDay = await this.systemSettingsService.getNumberValue('max_appointments_per_day');
+    const startOfDay = new Date(appointmentDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(appointmentDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const dayAppointmentsCount = await this.appointmentsRepository.count({
+      where: {
+        doctorId,
+        dateTime: Between(startOfDay, endOfDay),
+        status: In([AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED]),
+      },
+    });
+
+    if (dayAppointmentsCount >= maxPerDay) {
+      throw new BadRequestException(
+        `Ce médecin a atteint le nombre maximum de rendez-vous par jour (${maxPerDay}). Veuillez choisir une autre date.`,
+      );
+    }
+
+    // Validation 6: Règle médecin de famille (BR-A-002)
     const bookingValidation = await this.canPatientBookWithDoctor(
       patientId,
       doctorId,
@@ -433,7 +524,7 @@ export class AppointmentsService {
       throw new BadRequestException(bookingValidation.reason);
     }
 
-    // Validation 5: Disponibilité médecin (BR-A-003)
+    // Validation 7: Disponibilité médecin (BR-A-003)
     const doctorAvailable = await this.isDoctorAvailable(
       doctorId,
       appointmentDate,

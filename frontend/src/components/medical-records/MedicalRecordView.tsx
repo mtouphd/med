@@ -64,34 +64,10 @@ export default function MedicalRecordView({ patientId, readOnly = false }: Medic
     await loadMedicalRecord();
   };
 
-  const handleUpdateCondition = async (conditionId: string, data: any) => {
-    await medicalRecords.updateCondition(patientId, conditionId, data);
-    await loadMedicalRecord();
-  };
-
-  const handleDeleteCondition = async (conditionId: string) => {
-    if (confirm('Are you sure you want to delete this condition?')) {
-      await medicalRecords.deleteCondition(patientId, conditionId);
-      await loadMedicalRecord();
-    }
-  };
-
   // Allergies handlers
   const handleAddAllergy = async (data: any) => {
     await medicalRecords.addAllergy(patientId, data);
     await loadMedicalRecord();
-  };
-
-  const handleUpdateAllergy = async (allergyId: string, data: any) => {
-    await medicalRecords.updateAllergy(patientId, allergyId, data);
-    await loadMedicalRecord();
-  };
-
-  const handleDeleteAllergy = async (allergyId: string) => {
-    if (confirm('Are you sure you want to delete this allergy?')) {
-      await medicalRecords.deleteAllergy(patientId, allergyId);
-      await loadMedicalRecord();
-    }
   };
 
   // Medications handlers
@@ -100,21 +76,9 @@ export default function MedicalRecordView({ patientId, readOnly = false }: Medic
     await loadMedicalRecord();
   };
 
-  const handleUpdateMedication = async (medicationId: string, data: any) => {
-    await medicalRecords.updateMedication(patientId, medicationId, data);
-    await loadMedicalRecord();
-  };
-
   const handleStopMedication = async (medicationId: string) => {
     if (confirm('Are you sure you want to stop this medication?')) {
       await medicalRecords.stopMedication(patientId, medicationId);
-      await loadMedicalRecord();
-    }
-  };
-
-  const handleDeleteMedication = async (medicationId: string) => {
-    if (confirm('Are you sure you want to delete this medication?')) {
-      await medicalRecords.deleteMedication(patientId, medicationId);
       await loadMedicalRecord();
     }
   };
@@ -128,18 +92,6 @@ export default function MedicalRecordView({ patientId, readOnly = false }: Medic
   const handleAddVaccination = async (data: any) => {
     await medicalRecords.addVaccination(patientId, data);
     await loadMedicalRecord();
-  };
-
-  const handleUpdateVaccination = async (vaccinationId: string, data: any) => {
-    await medicalRecords.updateVaccination(patientId, vaccinationId, data);
-    await loadMedicalRecord();
-  };
-
-  const handleDeleteVaccination = async (vaccinationId: string) => {
-    if (confirm('Are you sure you want to delete this vaccination?')) {
-      await medicalRecords.deleteVaccination(patientId, vaccinationId);
-      await loadMedicalRecord();
-    }
   };
 
   const tabs = [
@@ -268,8 +220,6 @@ export default function MedicalRecordView({ patientId, readOnly = false }: Medic
             patientId={patientId}
             conditions={conditions}
             onAdd={handleAddCondition}
-            onUpdate={handleUpdateCondition}
-            onDelete={handleDeleteCondition}
             readOnly={readOnly}
           />
         )}
@@ -279,8 +229,6 @@ export default function MedicalRecordView({ patientId, readOnly = false }: Medic
             patientId={patientId}
             allergies={allergies}
             onAdd={handleAddAllergy}
-            onUpdate={handleUpdateAllergy}
-            onDelete={handleDeleteAllergy}
             readOnly={readOnly}
           />
         )}
@@ -290,9 +238,7 @@ export default function MedicalRecordView({ patientId, readOnly = false }: Medic
             patientId={patientId}
             medications={medications}
             onAdd={handleAddMedication}
-            onUpdate={handleUpdateMedication}
             onStop={handleStopMedication}
-            onDelete={handleDeleteMedication}
             onCheckAllergy={handleCheckMedicationAllergy}
             readOnly={readOnly}
           />
@@ -303,8 +249,6 @@ export default function MedicalRecordView({ patientId, readOnly = false }: Medic
             patientId={patientId}
             vaccinations={vaccinations}
             onAdd={handleAddVaccination}
-            onUpdate={handleUpdateVaccination}
-            onDelete={handleDeleteVaccination}
             readOnly={readOnly}
           />
         )}

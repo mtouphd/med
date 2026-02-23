@@ -28,13 +28,15 @@ export class AppointmentsController {
     return this.appointmentsService.findAll();
   }
 
+  // ==================== STATIC ROUTES (must come before :id) ====================
+
   @Get('me')
   @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.PATIENT)
   async getMyAppointments(@Request() req) {
     const doctor = await this.doctorsRepository.findOne({
       where: { userId: req.user.id },
     });
-    
+
     if (req.user.role === UserRole.PATIENT) {
       const patient = await this.patientsRepository.findOne({
         where: { userId: req.user.id },
@@ -49,6 +51,62 @@ export class AppointmentsController {
     return this.appointmentsService.findAll();
   }
 
+  @Get('admin/stats')
+  @Roles(UserRole.ADMIN)
+  getStats() {
+    return this.appointmentsService.getStats();
+  }
+
+  /**
+   * BR-W-001: Récupérer tous les rendez-vous en attente d'approbation
+   * GET /appointments/pending/all
+   */
+  @Get('pending/all')
+  @Roles(UserRole.ADMIN)
+  async getAllPendingAppointments() {
+    return this.appointmentsService.getPendingAppointments();
+  }
+
+  /**
+   * Récupérer les rendez-vous en attente pour le médecin connecté
+   * GET /appointments/pending/doctor
+   */
+  @Get('pending/doctor')
+  @Roles(UserRole.DOCTOR)
+  async getMyPendingAppointments(@Request() req) {
+    const doctor = await this.doctorsRepository.findOne({
+      where: { userId: req.user.id },
+    });
+
+    if (!doctor) {
+      return [];
+    }
+
+    return this.appointmentsService.getDoctorPendingAppointments(doctor.id);
+  }
+
+  @Get('doctor/patients')
+  @Roles(UserRole.DOCTOR, UserRole.ADMIN)
+  async getDoctorPatients(@Request() req) {
+    const doctor = await this.doctorsRepository.findOne({
+      where: { userId: req.user.id },
+    });
+    if (!doctor) {
+      return [];
+    }
+    return this.appointmentsService.getDoctorPatients(doctor.id);
+  }
+
+  @Get('check-availability/:doctorId')
+  @Roles(UserRole.PATIENT, UserRole.ADMIN)
+  checkAvailability(
+    @Param('doctorId') doctorId: string,
+    @Query('dateTime') dateTime: string,
+    @Query('duration') duration?: number,
+  ) {
+    return this.appointmentsService.checkAvailability(doctorId, dateTime, duration);
+  }
+
   @Get('doctor/:doctorId')
   @Roles(UserRole.ADMIN, UserRole.DOCTOR)
   findByDoctor(@Param('doctorId') doctorId: string) {
@@ -60,6 +118,18 @@ export class AppointmentsController {
   findByPatient(@Param('patientId') patientId: string) {
     return this.appointmentsService.findByPatient(patientId);
   }
+
+  @Get('doctor/:doctorId/range')
+  @Roles(UserRole.DOCTOR, UserRole.ADMIN)
+  getAppointmentsByDateRange(
+    @Param('doctorId') doctorId: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    return this.appointmentsService.getAppointmentsByDateRange(doctorId, startDate, endDate);
+  }
+
+  // ==================== :ID ROUTES ====================
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.PATIENT)
@@ -85,44 +155,6 @@ export class AppointmentsController {
     return this.appointmentsService.remove(id);
   }
 
-  @Get('admin/stats')
-  @Roles(UserRole.ADMIN)
-  getStats() {
-    return this.appointmentsService.getStats();
-  }
-
-  @Get('check-availability/:doctorId')
-  @Roles(UserRole.PATIENT, UserRole.ADMIN)
-  checkAvailability(
-    @Param('doctorId') doctorId: string,
-    @Query('dateTime') dateTime: string,
-    @Query('duration') duration?: number,
-  ) {
-    return this.appointmentsService.checkAvailability(doctorId, dateTime, duration);
-  }
-
-  @Get('doctor/:doctorId/range')
-  @Roles(UserRole.DOCTOR, UserRole.ADMIN)
-  getAppointmentsByDateRange(
-    @Param('doctorId') doctorId: string,
-    @Query('startDate') startDate: string,
-    @Query('endDate') endDate: string,
-  ) {
-    return this.appointmentsService.getAppointmentsByDateRange(doctorId, startDate, endDate);
-  }
-
-  @Get('doctor/patients')
-  @Roles(UserRole.DOCTOR, UserRole.ADMIN)
-  async getDoctorPatients(@Request() req) {
-    const doctor = await this.doctorsRepository.findOne({
-      where: { userId: req.user.id },
-    });
-    if (!doctor) {
-      return [];
-    }
-    return this.appointmentsService.getDoctorPatients(doctor.id);
-  }
-
   @Put(':id/approve')
   @Roles(UserRole.DOCTOR, UserRole.ADMIN)
   approveAppointment(@Param('id') id: string) {
@@ -136,35 +168,6 @@ export class AppointmentsController {
   }
 
   // ==================== WORKFLOW D'APPROBATION (BR-W-001, BR-W-002, BR-W-003) ====================
-
-  /**
-   * BR-W-001: Récupérer tous les rendez-vous en attente d'approbation
-   * GET /appointments/pending
-   * Admin peut voir tous, Médecin voit seulement les siens
-   */
-  @Get('pending/all')
-  @Roles(UserRole.ADMIN)
-  async getAllPendingAppointments() {
-    return this.appointmentsService.getPendingAppointments();
-  }
-
-  /**
-   * Récupérer les rendez-vous en attente pour le médecin connecté
-   * GET /appointments/pending/doctor
-   */
-  @Get('pending/doctor')
-  @Roles(UserRole.DOCTOR)
-  async getMyPendingAppointments(@Request() req) {
-    const doctor = await this.doctorsRepository.findOne({
-      where: { userId: req.user.id },
-    });
-
-    if (!doctor) {
-      return [];
-    }
-
-    return this.appointmentsService.getDoctorPendingAppointments(doctor.id);
-  }
 
   /**
    * BR-W-002: Approbation par le médecin

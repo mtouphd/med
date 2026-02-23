@@ -8,6 +8,7 @@ import {
   MedicalRecord,
   MedicalRecordSummary,
   MedicalCondition,
+  SystemSetting,
   Allergy,
   Medication,
   Vaccination,
@@ -48,6 +49,15 @@ export const doctors = {
   delete: (id: string) => api.delete(`/doctors/${id}`),
   updateSchedule: (id: string, schedule: any) =>
     api.put(`/doctors/${id}/schedule`, { schedule }),
+  // Family patients
+  getFamilyPatients: (doctorId: string) => api.get(`/doctors/${doctorId}/family-patients`),
+  getMyFamilyPatients: () => api.get('/doctors/me/family-patients'),
+  // Statistics
+  getStatistics: (doctorId: string) => api.get(`/doctors/${doctorId}/statistics`),
+  getMyStatistics: () => api.get('/doctors/me/statistics'),
+  // Pending appointments
+  getPendingAppointments: (doctorId: string) => api.get(`/doctors/${doctorId}/pending-appointments`),
+  getMyPendingAppointments: () => api.get('/doctors/me/pending-appointments'),
 };
 
 export const appointments = {
@@ -81,6 +91,15 @@ export const patients = {
   create: (data: any) => api.post('/patients', data),
   update: (id: string, data: any) => api.put(`/patients/${id}`, data),
   delete: (id: string) => api.delete(`/patients/${id}`),
+  // Family doctor management
+  assignFamilyDoctor: (patientId: string, doctorId: string, reason?: string) =>
+    api.post(`/patients/${patientId}/family-doctor`, { doctorId, reason }),
+  changeFamilyDoctor: (patientId: string, doctorId: string, reason?: string) =>
+    api.patch(`/patients/${patientId}/family-doctor`, { doctorId, reason }),
+  removeFamilyDoctor: (patientId: string, reason?: string) =>
+    api.delete(`/patients/${patientId}/family-doctor`, { data: { reason } }),
+  getFamilyDoctorHistory: (patientId: string) =>
+    api.get(`/patients/${patientId}/family-doctor/history`),
 };
 
 export const users = {
@@ -91,75 +110,57 @@ export const users = {
 };
 
 // Medical Records API
+// Backend controller: @Controller('patients/:patientId/medical-record')
 export const medicalRecords = {
   // Medical Record
   getMedicalRecord: (patientId: string) =>
-    api.get<MedicalRecord>(`/medical-records/patient/${patientId}`),
+    api.get<MedicalRecord>(`/patients/${patientId}/medical-record`),
   getSummary: (patientId: string) =>
-    api.get<MedicalRecordSummary>(`/medical-records/patient/${patientId}/summary`),
+    api.get<MedicalRecordSummary>(`/patients/${patientId}/medical-record/summary`),
   updateMedicalRecord: (patientId: string, data: any) =>
-    api.patch<MedicalRecord>(`/medical-records/patient/${patientId}`, data),
+    api.patch<MedicalRecord>(`/patients/${patientId}/medical-record`, data),
 
   // Conditions
   getConditions: (patientId: string) =>
-    api.get<MedicalCondition[]>(`/medical-records/patient/${patientId}/conditions`),
+    api.get<MedicalCondition[]>(`/patients/${patientId}/medical-record/conditions`),
+  getActiveConditions: (patientId: string) =>
+    api.get<MedicalCondition[]>(`/patients/${patientId}/medical-record/conditions/active`),
   addCondition: (patientId: string, data: any) =>
-    api.post<MedicalCondition>(`/medical-records/patient/${patientId}/conditions`, data),
-  updateCondition: (patientId: string, conditionId: string, data: any) =>
-    api.patch<MedicalCondition>(
-      `/medical-records/patient/${patientId}/conditions/${conditionId}`,
-      data
-    ),
-  deleteCondition: (patientId: string, conditionId: string) =>
-    api.delete(`/medical-records/patient/${patientId}/conditions/${conditionId}`),
+    api.post<MedicalCondition>(`/patients/${patientId}/medical-record/conditions`, data),
 
   // Allergies
   getAllergies: (patientId: string) =>
-    api.get<Allergy[]>(`/medical-records/patient/${patientId}/allergies`),
+    api.get<Allergy[]>(`/patients/${patientId}/medical-record/allergies`),
+  getMedicationAllergies: (patientId: string) =>
+    api.get<Allergy[]>(`/patients/${patientId}/medical-record/allergies/medications`),
   addAllergy: (patientId: string, data: any) =>
-    api.post<Allergy>(`/medical-records/patient/${patientId}/allergies`, data),
-  updateAllergy: (patientId: string, allergyId: string, data: any) =>
-    api.patch<Allergy>(
-      `/medical-records/patient/${patientId}/allergies/${allergyId}`,
-      data
-    ),
-  deleteAllergy: (patientId: string, allergyId: string) =>
-    api.delete(`/medical-records/patient/${patientId}/allergies/${allergyId}`),
+    api.post<Allergy>(`/patients/${patientId}/medical-record/allergies`, data),
 
   // Medications
   getMedications: (patientId: string) =>
-    api.get<Medication[]>(`/medical-records/patient/${patientId}/medications`),
+    api.get<Medication[]>(`/patients/${patientId}/medical-record/medications`),
+  getActiveMedications: (patientId: string) =>
+    api.get<Medication[]>(`/patients/${patientId}/medical-record/medications/active`),
   addMedication: (patientId: string, data: any) =>
-    api.post<Medication>(`/medical-records/patient/${patientId}/medications`, data),
-  updateMedication: (patientId: string, medicationId: string, data: any) =>
+    api.post<Medication>(`/patients/${patientId}/medical-record/medications`, data),
+  stopMedication: (patientId: string, medicationId: string, reason?: string) =>
     api.patch<Medication>(
-      `/medical-records/patient/${patientId}/medications/${medicationId}`,
-      data
+      `/patients/${patientId}/medical-record/medications/${medicationId}/stop`,
+      { reason }
     ),
-  stopMedication: (patientId: string, medicationId: string) =>
-    api.patch<Medication>(
-      `/medical-records/patient/${patientId}/medications/${medicationId}/stop`
-    ),
-  deleteMedication: (patientId: string, medicationId: string) =>
-    api.delete(`/medical-records/patient/${patientId}/medications/${medicationId}`),
   checkMedicationAllergy: (patientId: string, medicationName: string) =>
-    api.get<{ hasAllergy: boolean; allergies: Allergy[] }>(
-      `/medical-records/patient/${patientId}/medications/check-allergy`,
-      { params: { medicationName } }
+    api.post<{ canPrescribe: boolean; warnings: string[] }>(
+      `/patients/${patientId}/medical-record/medications/check-allergy`,
+      { medicationName }
     ),
 
   // Vaccinations
   getVaccinations: (patientId: string) =>
-    api.get<Vaccination[]>(`/medical-records/patient/${patientId}/vaccinations`),
+    api.get<Vaccination[]>(`/patients/${patientId}/medical-record/vaccinations`),
+  getUpcomingVaccinations: (patientId: string) =>
+    api.get<Vaccination[]>(`/patients/${patientId}/medical-record/vaccinations/upcoming`),
   addVaccination: (patientId: string, data: any) =>
-    api.post<Vaccination>(`/medical-records/patient/${patientId}/vaccinations`, data),
-  updateVaccination: (patientId: string, vaccinationId: string, data: any) =>
-    api.patch<Vaccination>(
-      `/medical-records/patient/${patientId}/vaccinations/${vaccinationId}`,
-      data
-    ),
-  deleteVaccination: (patientId: string, vaccinationId: string) =>
-    api.delete(`/medical-records/patient/${patientId}/vaccinations/${vaccinationId}`),
+    api.post<Vaccination>(`/patients/${patientId}/medical-record/vaccinations`, data),
 };
 
 // Family Doctor Requests API
@@ -187,6 +188,13 @@ export const familyDoctorRequests = {
     api.patch<FamilyDoctorRequest>(`/family-doctor-requests/${id}/reject/doctor`, {
       responseReason,
     }),
+};
+
+// System Settings API
+export const systemSettings = {
+  getAll: () => api.get<SystemSetting[]>('/system-settings'),
+  update: (key: string, value: string) =>
+    api.patch<SystemSetting>(`/system-settings/${key}`, { value }),
 };
 
 export default api;

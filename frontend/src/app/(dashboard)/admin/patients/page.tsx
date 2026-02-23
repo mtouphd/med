@@ -80,19 +80,22 @@ export default function AdminPatientsPage() {
     e.preventDefault();
     setCreating(true);
     try {
-      await patients.create({
+      const payload: any = {
         user: {
           email: formData.email,
           password: formData.password,
           firstName: formData.firstName,
           lastName: formData.lastName,
-          phone: formData.phone,
           role: 'PATIENT',
         },
-        dateOfBirth: formData.dateOfBirth,
-        address: formData.address,
-        emergencyContact: formData.emergencyContact,
-      });
+      };
+      // Only include optional fields if they have values
+      if (formData.phone) payload.user.phone = formData.phone;
+      if (formData.dateOfBirth) payload.dateOfBirth = formData.dateOfBirth;
+      if (formData.address) payload.address = formData.address;
+      if (formData.emergencyContact) payload.emergencyContact = formData.emergencyContact;
+
+      await patients.create(payload);
 
       // Reload data first
       await loadData();

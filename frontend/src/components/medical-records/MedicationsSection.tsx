@@ -9,10 +9,10 @@ interface MedicationsSectionProps {
   patientId: string;
   medications: Medication[];
   onAdd: (data: any) => Promise<void>;
-  onUpdate: (medicationId: string, data: any) => Promise<void>;
-  onStop: (medicationId: string) => Promise<void>;
-  onDelete: (medicationId: string) => Promise<void>;
-  onCheckAllergy: (medicationName: string) => Promise<{ hasAllergy: boolean; allergies: Allergy[] }>;
+  onUpdate?: (medicationId: string, data: any) => Promise<void>;
+  onStop?: (medicationId: string) => Promise<void>;
+  onDelete?: (medicationId: string) => Promise<void>;
+  onCheckAllergy?: (medicationName: string) => Promise<any>;
   readOnly?: boolean;
 }
 
@@ -46,7 +46,7 @@ export default function MedicationsSection({
   const activeMedications = medications.filter((m) => m.status === MedicationStatus.ACTIVE);
 
   const checkAllergyForMedication = async (medicationName: string) => {
-    if (!medicationName.trim()) return;
+    if (!medicationName.trim() || !onCheckAllergy) return;
     const result = await onCheckAllergy(medicationName);
     if (result.hasAllergy) {
       setAllergyWarning({ show: true, allergies: result.allergies });
@@ -60,7 +60,7 @@ export default function MedicationsSection({
     if (allergyWarning.show && !confirm('This medication may trigger allergies. Do you want to proceed?')) {
       return;
     }
-    if (editingId) {
+    if (editingId && onUpdate) {
       await onUpdate(editingId, formData);
       setEditingId(null);
     } else {
@@ -292,29 +292,33 @@ export default function MedicationsSection({
                   )}
                 </div>
               </div>
-              {!readOnly && (
+              {!readOnly && (onStop || onUpdate || onDelete) && (
                 <div className="flex gap-2 ml-4">
-                  {medication.status === MedicationStatus.ACTIVE && (
+                  {onStop && medication.status === MedicationStatus.ACTIVE && (
                     <button
-                      onClick={() => onStop(medication.id)}
+                      onClick={() => onStop!(medication.id)}
                       className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
                       title="Stop medication"
                     >
                       <StopCircle size={18} />
                     </button>
                   )}
-                  <button
-                    onClick={() => handleEdit(medication)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  >
-                    <Edit2 size={18} />
-                  </button>
-                  <button
-                    onClick={() => onDelete(medication.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                  {onUpdate && (
+                    <button
+                      onClick={() => handleEdit(medication)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
+                      <Edit2 size={18} />
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      onClick={() => onDelete!(medication.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  )}
                 </div>
               )}
             </div>

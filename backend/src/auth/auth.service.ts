@@ -104,13 +104,32 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    return {
+    const result: any = {
       id: user.id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
       role: user.role,
     };
+
+    // Include doctor/patient relations for guards (CanViewPatientGuard, IsFamilyDoctorGuard)
+    if (user.role === UserRole.DOCTOR) {
+      const doctor = await this.doctorsRepository.findOne({
+        where: { userId: user.id },
+      });
+      if (doctor) {
+        result.doctor = { id: doctor.id };
+      }
+    } else if (user.role === UserRole.PATIENT) {
+      const patient = await this.patientsRepository.findOne({
+        where: { userId: user.id },
+      });
+      if (patient) {
+        result.patient = { id: patient.id };
+      }
+    }
+
+    return result;
   }
 
   private generateToken(user: User): string {

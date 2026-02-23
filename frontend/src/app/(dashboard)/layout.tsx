@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { UserRole } from '@/types';
-import { LayoutDashboard, Calendar, Users, Stethoscope, LogOut, FolderOpen, FileText, Heart, UserCog, UserPlus, ChevronDown, ChevronRight, Inbox } from 'lucide-react';
+import { LayoutDashboard, Calendar, CalendarDays, Users, Stethoscope, LogOut, FolderOpen, FileText, Heart, UserCog, UserPlus, ChevronDown, ChevronRight, Inbox, Settings } from 'lucide-react';
 import { useState } from 'react';
 
 interface NavigationItem {
@@ -32,7 +32,7 @@ const navigation: NavigationItem[] = [
   {
     name: 'Consultations',
     href: '/consultations',
-    roles: [UserRole.PATIENT],
+    roles: [UserRole.PATIENT, UserRole.DOCTOR],
     icon: FileText
   },
   {
@@ -40,6 +40,12 @@ const navigation: NavigationItem[] = [
     href: '/requests',
     roles: [UserRole.DOCTOR],
     icon: Inbox
+  },
+  {
+    name: 'My Availability',
+    href: '/availability',
+    roles: [UserRole.DOCTOR],
+    icon: CalendarDays
   },
   {
     name: 'Patient Folder',
@@ -63,6 +69,7 @@ const navigation: NavigationItem[] = [
       { name: 'Patients', href: '/admin/patients', roles: [UserRole.ADMIN], icon: UserPlus },
       { name: 'Doctors', href: '/admin/doctors', roles: [UserRole.ADMIN], icon: UserCog },
       { name: 'Doctor Requests', href: '/admin/family-doctor-requests', roles: [UserRole.ADMIN], icon: Heart },
+      { name: 'Settings', href: '/admin/settings', roles: [UserRole.ADMIN], icon: Settings },
     ]
   },
 ];

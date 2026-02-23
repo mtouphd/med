@@ -20,16 +20,16 @@ export class PatientsController {
     return this.patientsService.findAll();
   }
 
-  @Get(':id')
-  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.PATIENT)
-  findOne(@Param('id') id: string) {
-    return this.patientsService.findOne(id);
-  }
-
   @Get('me/profile')
   @Roles(UserRole.PATIENT)
   async getMyProfile(@Request() req) {
     return this.patientsService.findByUserId(req.user.id);
+  }
+
+  @Get(':id')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.PATIENT)
+  findOne(@Param('id') id: string) {
+    return this.patientsService.findOne(id);
   }
 
   @Post()
