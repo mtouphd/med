@@ -241,11 +241,11 @@ export default function DoctorsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {doctorsList.map((doctor) => (
           <div
             key={doctor.id}
-            className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"
+            className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-100"
           >
             <div className="flex items-center gap-4 mb-4">
               <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
@@ -274,10 +274,10 @@ export default function DoctorsPage() {
               </div>
 
               {user?.role === UserRole.PATIENT && (
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <button
                     onClick={() => setSelectedDoctor(doctor)}
-                    className="flex-1 flex items-center justify-center gap-2 bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors text-sm"
+                    className="flex-1 flex items-center justify-center gap-2 bg-primary-500 text-white px-3 py-2 rounded-lg hover:bg-primary-600 transition-colors text-sm"
                   >
                     <Calendar size={16} />
                     Book Now
@@ -337,8 +337,8 @@ export default function DoctorsPage() {
       {/* Family Doctor Request Modal */}
       {showRequestModal && requestDoctor && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
+          <div className="bg-white p-4 md:p-6 rounded-xl w-full max-w-md mx-3 md:mx-0">
+            <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-4">
               Request Dr. {requestDoctor.user.firstName} {requestDoctor.user.lastName} as Family Doctor
             </h2>
             <p className="text-sm text-gray-600 mb-4">
@@ -386,8 +386,8 @@ export default function DoctorsPage() {
       {/* Book Appointment Modal */}
       {selectedDoctor && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
+          <div className="bg-white p-4 md:p-6 rounded-xl w-full max-w-md mx-3 md:mx-0">
+            <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-4">
               Book with Dr. {selectedDoctor.user.firstName} {selectedDoctor.user.lastName}
             </h2>
             <p className="text-sm text-gray-500 mb-4">

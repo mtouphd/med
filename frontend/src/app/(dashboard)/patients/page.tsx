@@ -83,7 +83,7 @@ export default function DoctorPatientsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Patient Folder</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Patient Folder</h1>
         <p className="text-gray-600 mt-1">View patient records and medical information</p>
       </div>
 
@@ -117,11 +117,11 @@ export default function DoctorPatientsPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {filteredPatients.map((patient) => (
             <div
               key={patient.id}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+              className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6 hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => handleViewPatient(patient)}
             >
               <div className="flex items-start gap-3 mb-4">
@@ -187,7 +187,7 @@ export default function DoctorPatientsPage() {
           <div className="space-y-6">
             {/* Tabs */}
             <div className="border-b border-gray-200">
-              <nav className="flex space-x-4">
+              <nav className="flex space-x-1 md:space-x-4 overflow-x-auto">
                 {[
                   { key: 'info' as const, label: 'Personal Info' },
                   { key: 'medical' as const, label: 'Medical Records' },
@@ -196,7 +196,7 @@ export default function DoctorPatientsPage() {
                   <button
                     key={tab.key}
                     onClick={() => setModalTab(tab.key)}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                    className={`px-2 md:px-4 py-2 text-xs md:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                       modalTab === tab.key
                         ? 'border-primary-500 text-primary-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -211,7 +211,7 @@ export default function DoctorPatientsPage() {
             {/* Tab Content */}
             {modalTab === 'info' && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
                     <p className="text-gray-900">{selectedPatient.user.firstName}</p>

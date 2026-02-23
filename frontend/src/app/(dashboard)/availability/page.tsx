@@ -219,28 +219,28 @@ export default function AvailabilityPage() {
       )}
 
       {/* Legend + Actions */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-6 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded border-2 border-green-500 bg-green-400"></div>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
+        <div className="flex items-center gap-3 md:gap-6 text-xs md:text-sm flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 md:w-6 md:h-6 rounded border-2 border-green-500 bg-green-400"></div>
             <span className="text-gray-700">Available</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded border-2 border-gray-200 bg-white"></div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 md:w-6 md:h-6 rounded border-2 border-gray-200 bg-white"></div>
             <span className="text-gray-700">Unavailable</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded border-2 border-amber-400" style={{
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 md:w-6 md:h-6 rounded border-2 border-amber-400" style={{
               background: 'repeating-linear-gradient(-45deg, #fbbf24, #fbbf24 4px, #fef3c7 4px, #fef3c7 8px)',
             }}></div>
-            <span className="text-gray-700">Maybe available</span>
+            <span className="text-gray-700">Maybe</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           <button
             onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            className="flex items-center gap-1.5 px-3 md:px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
           >
             <RotateCcw size={16} />
             Reset
@@ -248,7 +248,7 @@ export default function AvailabilityPage() {
           <button
             onClick={handleSave}
             disabled={!hasChanges || saving}
-            className={`flex items-center gap-2 px-5 py-2 text-sm rounded-lg font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-4 md:px-5 py-2 text-sm rounded-lg font-medium transition-colors ${
               hasChanges && !saving
                 ? 'bg-primary-500 text-white hover:bg-primary-600 shadow-sm'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
@@ -270,7 +270,7 @@ export default function AvailabilityPage() {
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th className="w-20 px-3 py-3 bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase border-b border-r border-gray-200">
+                <th className="w-14 md:w-20 px-1 md:px-3 py-2 md:py-3 bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase border-b border-r border-gray-200">
                   Time
                 </th>
                 {DAY_LABELS.map((label, i) => (
@@ -288,7 +288,7 @@ export default function AvailabilityPage() {
             <tbody>
               {HOURS.map((hour) => (
                 <tr key={hour}>
-                  <td className="px-3 py-0 text-xs font-mono text-gray-500 border-r border-b border-gray-200 bg-gray-50 whitespace-nowrap">
+                  <td className="px-1 md:px-3 py-0 text-xs font-mono text-gray-500 border-r border-b border-gray-200 bg-gray-50 whitespace-nowrap">
                     {hour}
                   </td>
                   {DAYS.map((day) => {
@@ -300,7 +300,7 @@ export default function AvailabilityPage() {
                       >
                         <button
                           onClick={() => handleCellClick(day, hour)}
-                          className={`w-full h-10 rounded border-2 cursor-pointer transition-all ${getCellStyle(status)}`}
+                          className={`w-full h-8 md:h-10 rounded border-2 cursor-pointer transition-all ${getCellStyle(status)}`}
                           style={status === 'maybe' ? {
                             background: 'repeating-linear-gradient(-45deg, #fbbf24, #fbbf24 4px, #fef3c7 4px, #fef3c7 8px)',
                           } : undefined}

@@ -334,11 +334,11 @@ export default function DoctorAppointmentsPage() {
           : 'Manage your appointments and patients'}
       </p>
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
         <div className="flex gap-2">
           <button
             onClick={() => setViewMode('calendar')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+            className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg text-sm md:text-base ${
               viewMode === 'calendar' ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-700'
             }`}
           >
@@ -347,7 +347,7 @@ export default function DoctorAppointmentsPage() {
           </button>
           <button
             onClick={() => setViewMode('list')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+            className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg text-sm md:text-base ${
               viewMode === 'list' ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-700'
             }`}
           >
@@ -358,10 +358,10 @@ export default function DoctorAppointmentsPage() {
         {(user?.role === UserRole.DOCTOR || user?.role === UserRole.PATIENT) && (
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+            className="flex items-center gap-2 px-3 md:px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors text-sm md:text-base"
           >
             <Plus size={18} />
-            {user?.role === UserRole.PATIENT ? 'Book Appointment' : 'New Appointment'}
+            {user?.role === UserRole.PATIENT ? 'Book' : 'New'}
           </button>
         )}
       </div>
@@ -376,34 +376,34 @@ export default function DoctorAppointmentsPage() {
 
       {viewMode === 'calendar' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-          <div className="p-4 flex items-center justify-between border-b border-gray-100">
+          <div className="p-3 md:p-4 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100">
             <button
               onClick={() => navigateCalendar(-1)}
               className="p-2 hover:bg-gray-100 rounded-lg"
             >
               ←
             </button>
-            <div className="flex gap-2">
+            <div className="flex gap-1 md:gap-2 order-3 md:order-none w-full md:w-auto justify-center">
               <button
                 onClick={() => setCalendarView('week')}
-                className={`px-3 py-1 rounded ${calendarView === 'week' ? 'bg-primary-100 text-primary-600' : ''}`}
+                className={`px-2 md:px-3 py-1 rounded text-sm ${calendarView === 'week' ? 'bg-primary-100 text-primary-600' : ''}`}
               >
                 Week
               </button>
               <button
                 onClick={() => setCalendarView('month')}
-                className={`px-3 py-1 rounded ${calendarView === 'month' ? 'bg-primary-100 text-primary-600' : ''}`}
+                className={`px-2 md:px-3 py-1 rounded text-sm ${calendarView === 'month' ? 'bg-primary-100 text-primary-600' : ''}`}
               >
                 Month
               </button>
               <button
                 onClick={() => setCalendarView('year')}
-                className={`px-3 py-1 rounded ${calendarView === 'year' ? 'bg-primary-100 text-primary-600' : ''}`}
+                className={`px-2 md:px-3 py-1 rounded text-sm ${calendarView === 'year' ? 'bg-primary-100 text-primary-600' : ''}`}
               >
                 Year
               </button>
             </div>
-            <span className="font-medium">{formatCalendarHeader()}</span>
+            <span className="font-medium text-sm md:text-base">{formatCalendarHeader()}</span>
             <button
               onClick={() => navigateCalendar(1)}
               className="p-2 hover:bg-gray-100 rounded-lg"
@@ -501,7 +501,7 @@ export default function DoctorAppointmentsPage() {
               )}
 
               {calendarView === 'year' && (
-                <div className="p-4 grid grid-cols-4 gap-4">
+                <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                   {Array.from({ length: 12 }, (_, i) => {
                     const monthAppointments = appointmentsList.filter(apt => 
                       new Date(apt.dateTime).getMonth() === i &&
@@ -544,8 +544,8 @@ export default function DoctorAppointmentsPage() {
                     : 'border-gray-100'
                 }`}
               >
-                <div className="p-6">
-                  <div className="flex items-start justify-between">
+                <div className="p-4 md:p-6">
+                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
                         {getStatusIcon(apt.status)}
@@ -577,7 +577,7 @@ export default function DoctorAppointmentsPage() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                             <div className="flex items-center gap-2 text-gray-600">
                               <CalendarIcon size={16} className="text-gray-400" />
                               <span>{new Date(apt.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -639,7 +639,7 @@ export default function DoctorAppointmentsPage() {
                       )}
                     </div>
 
-                  <div className="flex flex-col gap-2 ml-4">
+                  <div className="flex flex-row md:flex-col gap-2 md:ml-4 flex-wrap">
                     {user?.role === UserRole.PATIENT ? (
                       <>
                         <button
@@ -766,9 +766,9 @@ export default function DoctorAppointmentsPage() {
 
       {selectedAppointment && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between mb-4">
-              <h2 className="text-2xl font-bold text-gray-900">
+          <div className="bg-white p-4 md:p-6 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-3 md:mx-0">
+            <div className="flex items-start justify-between mb-4 gap-2">
+              <h2 className="text-lg md:text-2xl font-bold text-gray-900">
                 {user?.role === UserRole.PATIENT ? 'Consultation Details' : 'Appointment Details'}
               </h2>
               <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(selectedAppointment.status)}`}>
@@ -954,7 +954,7 @@ export default function DoctorAppointmentsPage() {
               </div>
             )}
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
               {user?.role === UserRole.PATIENT ? (
                 <>
                   <button
@@ -1028,8 +1028,8 @@ export default function DoctorAppointmentsPage() {
 
       {showRejectModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Reject Appointment</h2>
+          <div className="bg-white p-4 md:p-6 rounded-xl w-full max-w-md mx-3 md:mx-0">
+            <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-2">Reject Appointment</h2>
             <p className="text-sm text-gray-600 mb-4">
               Please provide a reason for rejecting this appointment. The reason will be visible to the patient.
             </p>
@@ -1073,8 +1073,8 @@ export default function DoctorAppointmentsPage() {
 
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
+          <div className="bg-white p-4 md:p-6 rounded-xl w-full max-w-md mx-3 md:mx-0">
+            <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-4">
               {user?.role === UserRole.PATIENT ? 'Book New Appointment' : 'Schedule New Appointment'}
             </h2>
 
@@ -1147,17 +1147,17 @@ export default function DoctorAppointmentsPage() {
               />
               {newAppointment.duration < minDuration && (
                 <p className="text-xs text-red-500 mt-1">
-                  La durée ne peut pas être inférieure à {minDuration} minutes.
+                  Duration cannot be less than {minDuration} minutes.
                 </p>
               )}
               {newAppointment.duration > maxDuration && (
                 <p className="text-xs text-red-500 mt-1">
-                  La durée ne peut pas dépasser {maxDuration} minutes.
+                  Duration cannot exceed {maxDuration} minutes.
                 </p>
               )}
               {newAppointment.duration >= minDuration && newAppointment.duration <= maxDuration && (
                 <p className="text-xs text-gray-400 mt-1">
-                  Choisissez une durée entre {minDuration} et {maxDuration} minutes.
+                  Choose a duration between {minDuration} and {maxDuration} minutes.
                 </p>
               )}
             </div>

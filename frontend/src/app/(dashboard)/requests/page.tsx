@@ -130,13 +130,13 @@ export default function RequestsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Requests</h1>
-          <p className="text-gray-600 mt-1">Manage appointment and family doctor requests</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Requests</h1>
+          <p className="text-gray-600 mt-1 text-sm md:text-base">Manage appointment and family doctor requests</p>
         </div>
         {(pendingAppointmentsCount > 0 || pendingFDRequestsCount > 0) && (
-          <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-2">
+          <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 md:px-4 py-2 self-start">
             <AlertCircle className="text-yellow-600" size={20} />
             <span className="text-yellow-900 font-semibold">
               {pendingAppointmentsCount + pendingFDRequestsCount} Pending Request
@@ -148,10 +148,10 @@ export default function RequestsPage() {
 
       {/* Tabs */}
       <div className="border-b border-gray-200">
-        <nav className="flex space-x-4">
+        <nav className="flex space-x-1 md:space-x-4 overflow-x-auto">
           <button
             onClick={() => setActiveTab('appointments')}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-1.5 md:gap-2 px-2 md:px-4 py-3 text-xs md:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === 'appointments'
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -167,7 +167,7 @@ export default function RequestsPage() {
           </button>
           <button
             onClick={() => setActiveTab('familyDoctor')}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-1.5 md:gap-2 px-2 md:px-4 py-3 text-xs md:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === 'familyDoctor'
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -197,23 +197,23 @@ export default function RequestsPage() {
             appointmentRequests.map((appointment) => (
               <div
                 key={appointment.id}
-                className="bg-white rounded-xl shadow-sm border-2 border-gray-200 hover:border-primary-200 transition-all p-6"
+                className="bg-white rounded-xl shadow-sm border-2 border-gray-200 hover:border-primary-200 transition-all p-4 md:p-6"
               >
-                <div className="flex items-start justify-between">
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                        <User className="text-blue-600" size={24} />
+                      <div className="w-10 md:w-12 h-10 md:h-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                        <User className="text-blue-600" size={20} />
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900 text-lg">
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-gray-900 text-base md:text-lg truncate">
                           {appointment.patient?.user.firstName} {appointment.patient?.user.lastName}
                         </h3>
-                        <p className="text-sm text-gray-600">{appointment.patient?.user.email}</p>
+                        <p className="text-sm text-gray-600 truncate">{appointment.patient?.user.email}</p>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mt-4">
                       <div className="flex items-center gap-2 text-gray-700">
                         <Calendar size={16} className="text-gray-500" />
                         <span className="text-sm">
@@ -247,19 +247,19 @@ export default function RequestsPage() {
                     )}
                   </div>
 
-                  <div className="ml-4 flex flex-col gap-2">
+                  <div className="flex flex-row md:flex-col gap-2">
                     <button
                       onClick={() => {
                         setSelectedAppointment(appointment);
                         setShowAppointmentModal(true);
                       }}
-                      className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm"
+                      className="flex-1 md:flex-none px-3 md:px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm text-center"
                     >
-                      View Details
+                      Details
                     </button>
                     <button
                       onClick={() => handleApproveAppointment(appointment.id)}
-                      className="flex items-center justify-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
+                      className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 md:px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
                     >
                       <CheckCircle size={16} />
                       Approve
@@ -269,7 +269,7 @@ export default function RequestsPage() {
                         setSelectedAppointment(appointment);
                         setShowAppointmentModal(true);
                       }}
-                      className="flex items-center justify-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
+                      className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 md:px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
                     >
                       <XCircle size={16} />
                       Reject
@@ -295,13 +295,13 @@ export default function RequestsPage() {
             familyDoctorRequestsList.map((request) => (
               <div
                 key={request.id}
-                className="bg-white rounded-xl shadow-sm border-2 border-gray-200 hover:border-primary-200 transition-all p-6"
+                className="bg-white rounded-xl shadow-sm border-2 border-gray-200 hover:border-primary-200 transition-all p-4 md:p-6"
               >
-                <div className="flex items-start justify-between">
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
-                        <Heart className="text-purple-600" size={24} />
+                      <div className="w-10 md:w-12 h-10 md:h-12 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                        <Heart className="text-purple-600" size={20} />
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900 text-lg">
@@ -326,19 +326,19 @@ export default function RequestsPage() {
                     )}
                   </div>
 
-                  <div className="ml-4 flex flex-col gap-2">
+                  <div className="flex flex-row md:flex-col gap-2">
                     <button
                       onClick={() => {
                         setSelectedFDRequest(request);
                         setShowFDModal(true);
                       }}
-                      className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm"
+                      className="flex-1 md:flex-none px-3 md:px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm text-center"
                     >
-                      View Details
+                      Details
                     </button>
                     <button
                       onClick={() => handleApproveFDRequest(request.id)}
-                      className="flex items-center justify-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
+                      className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 md:px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
                     >
                       <CheckCircle size={16} />
                       Approve
@@ -348,7 +348,7 @@ export default function RequestsPage() {
                         setSelectedFDRequest(request);
                         setShowFDModal(true);
                       }}
-                      className="flex items-center justify-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
+                      className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 md:px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
                     >
                       <XCircle size={16} />
                       Reject

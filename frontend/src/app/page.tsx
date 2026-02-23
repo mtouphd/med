@@ -41,7 +41,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
+      <div className="bg-white p-5 md:p-8 rounded-2xl shadow-xl w-full max-w-md mx-4 md:mx-0">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary-600">MedApp</h1>
           <p className="text-gray-500 mt-2">Medical Appointment Management</p>
@@ -75,7 +75,7 @@ export default function Home() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (
             <>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <input
                   type="text"
                   placeholder="First Name"

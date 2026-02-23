@@ -111,7 +111,7 @@ export default function ConsultationsPage() {
     <div>
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
           {isDoctor ? 'Consultation History' : 'My Consultation History'}
         </h1>
         <p className="text-gray-600">
@@ -123,7 +123,7 @@ export default function ConsultationsPage() {
 
       {/* Search & Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
           {/* Search bar */}
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -165,7 +165,7 @@ export default function ConsultationsPage() {
 
         {/* Expanded filters */}
         {showFilters && (
-          <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Date from</label>
               <input
@@ -255,17 +255,17 @@ export default function ConsultationsPage() {
                 className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all overflow-hidden"
               >
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-primary-50 to-blue-50 border-b border-gray-200">
-                  <div className="flex items-center gap-4">
-                    <div className="bg-white p-2.5 rounded-lg shadow-sm">
-                      <User className="text-primary-600" size={22} />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-primary-50 to-blue-50 border-b border-gray-200 gap-2">
+                  <div className="flex items-center gap-3 md:gap-4">
+                    <div className="bg-white p-2 md:p-2.5 rounded-lg shadow-sm flex-shrink-0">
+                      <User className="text-primary-600" size={20} />
                     </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{personName}</h3>
+                    <div className="min-w-0">
+                      <h3 className="text-base md:text-lg font-semibold text-gray-900 truncate">{personName}</h3>
                       <p className="text-sm text-primary-600 font-medium">{personSubtitle}</p>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-left sm:text-right ml-11 sm:ml-0">
                     <div className="flex items-center gap-1.5 text-sm text-gray-700">
                       <Calendar size={16} />
                       <span>{new Date(consultation.dateTime).toLocaleDateString('fr-FR', {
@@ -285,7 +285,7 @@ export default function ConsultationsPage() {
                 </div>
 
                 {/* Content */}
-                <div className="px-6 py-4 space-y-3">
+                <div className="px-4 md:px-6 py-3 md:py-4 space-y-3">
                   {consultation.reason && (
                     <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                       <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Reason</h4>
