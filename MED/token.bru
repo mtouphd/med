@@ -13,14 +13,7 @@ post {
 body:json {
   {
     "email": "admin@medapp.com",
-    "password": "admin123"
+    "password": "qwerty"
   }
   
-}
-
-script:pre-request {
-  if (res.status === 200 || res.status === 201) {
-    const data = res.getBody();
-    bru.setEnvVar("token", data.access_token);
-  }
 }

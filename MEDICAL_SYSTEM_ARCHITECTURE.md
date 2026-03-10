@@ -835,7 +835,7 @@ med/
 
 ### 10.2 Améliorations Futures
 
-- [ ] Système de notifications (in-app, email)
+- [ ] Système de notifications (in-app, emai)
 - [ ] WebSocket pour temps réel
 - [ ] Auto-rejet après 7 jours sans action
 - [ ] Tableau de bord statistiques avancées
