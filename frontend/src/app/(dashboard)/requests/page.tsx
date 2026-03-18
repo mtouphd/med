@@ -1,39 +1,30 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { appointments, familyDoctorRequests } from '@/lib/api';
-import { Appointment, FamilyDoctorRequest, FamilyDoctorRequestStatus, AppointmentStatus } from '@/types';
-import Badge from '@/components/ui/Badge';
-import Modal from '@/components/ui/Modal';
-import { Calendar, Heart, CheckCircle, XCircle, User, Clock, FileText, AlertCircle } from 'lucide-react';
-
-type TabType = 'appointments' | 'familyDoctor';
+import { useLanguage } from '@/lib/language-context';
+import { familyDoctorRequests, appointments } from '@/lib/api';
+import { FamilyDoctorRequest, Appointment, FamilyDoctorRequestStatus, AppointmentStatus } from '@/types';
+import { Inbox, Check, X, Clock, User, Calendar } from 'lucide-react';
 
 export default function RequestsPage() {
-  const [activeTab, setActiveTab] = useState<TabType>('appointments');
-  const [appointmentRequests, setAppointmentRequests] = useState<Appointment[]>([]);
-  const [familyDoctorRequestsList, setFamilyDoctorRequestsList] = useState<FamilyDoctorRequest[]>([]);
+  const { t } = useLanguage();
+  const [doctorRequests, setDoctorRequests] = useState<FamilyDoctorRequest[]>([]);
+  const [pendingAppointments, setPendingAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
-  const [selectedFDRequest, setSelectedFDRequest] = useState<FamilyDoctorRequest | null>(null);
-  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
-  const [showFDModal, setShowFDModal] = useState(false);
-  const [responseReason, setResponseReason] = useState('');
-  const [processing, setProcessing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'appointments' | 'familyDoctor'>('appointments');
 
   useEffect(() => {
-    loadData();
+    loadRequests();
   }, []);
 
-  const loadData = async () => {
+  const loadRequests = async () => {
     try {
-      setLoading(true);
-      const [appointmentsRes, fdRequestsRes] = await Promise.all([
-        appointments.getPendingDoctor(),
+      const [familyRes, appointmentsRes] = await Promise.all([
         familyDoctorRequests.getMyDoctorRequests(),
+        appointments.getPendingDoctor(),
       ]);
-      setAppointmentRequests(appointmentsRes.data);
-      setFamilyDoctorRequestsList(fdRequestsRes.data);
+      setDoctorRequests(familyRes.data);
+      setPendingAppointments(appointmentsRes.data);
     } catch (error) {
       console.error('Error loading requests:', error);
     } finally {
@@ -41,523 +32,202 @@ export default function RequestsPage() {
     }
   };
 
-  // Appointment handlers
-  const handleApproveAppointment = async (appointmentId: string) => {
+  const handleApproveFamilyRequest = async (id: string) => {
     try {
-      setProcessing(true);
-      await appointments.approveByDoctor(appointmentId);
-      await loadData();
-      setShowAppointmentModal(false);
-      setSelectedAppointment(null);
+      await familyDoctorRequests.approveByDoctor(id);
+      loadRequests();
+    } catch (error) {
+      console.error('Error approving request:', error);
+    }
+  };
+
+  const handleRejectFamilyRequest = async (id: string) => {
+    try {
+      await familyDoctorRequests.rejectByDoctor(id, 'Request rejected');
+      loadRequests();
+    } catch (error) {
+      console.error('Error rejecting request:', error);
+    }
+  };
+
+  const handleApproveAppointment = async (id: string) => {
+    try {
+      await appointments.approveByDoctor(id);
+      loadRequests();
     } catch (error) {
       console.error('Error approving appointment:', error);
-      alert('Failed to approve appointment');
-    } finally {
-      setProcessing(false);
     }
   };
 
-  const handleRejectAppointment = async (appointmentId: string, reason: string) => {
-    if (!reason.trim()) {
-      alert('Please provide a reason for rejection');
-      return;
-    }
-
+  const handleRejectAppointment = async (id: string) => {
     try {
-      setProcessing(true);
-      await appointments.rejectByDoctor(appointmentId, reason);
-      await loadData();
-      setShowAppointmentModal(false);
-      setSelectedAppointment(null);
-      setResponseReason('');
+      await appointments.rejectByDoctor(id, 'Appointment rejected');
+      loadRequests();
     } catch (error) {
       console.error('Error rejecting appointment:', error);
-      alert('Failed to reject appointment');
-    } finally {
-      setProcessing(false);
     }
   };
 
-  // Family doctor request handlers
-  const handleApproveFDRequest = async (requestId: string, reason?: string) => {
-    try {
-      setProcessing(true);
-      await familyDoctorRequests.approveByDoctor(requestId, reason);
-      await loadData();
-      setShowFDModal(false);
-      setSelectedFDRequest(null);
-      setResponseReason('');
-    } catch (error: any) {
-      console.error('Error approving family doctor request:', error);
-      alert(error.response?.data?.message || 'Failed to approve request');
-    } finally {
-      setProcessing(false);
+  const getStatusColor = (status: FamilyDoctorRequestStatus) => {
+    switch (status) {
+      case FamilyDoctorRequestStatus.PENDING: return 'bg-yellow-100 text-yellow-800';
+      case FamilyDoctorRequestStatus.APPROVED: return 'bg-green-100 text-green-800';
+      case FamilyDoctorRequestStatus.REJECTED: return 'bg-red-100 text-red-800';
+      default: return 'bg-slate-100 text-midnight-700';
     }
   };
-
-  const handleRejectFDRequest = async (requestId: string, reason: string) => {
-    if (!reason.trim()) {
-      alert('Please provide a reason for rejection');
-      return;
-    }
-
-    try {
-      setProcessing(true);
-      await familyDoctorRequests.rejectByDoctor(requestId, reason);
-      await loadData();
-      setShowFDModal(false);
-      setSelectedFDRequest(null);
-      setResponseReason('');
-    } catch (error) {
-      console.error('Error rejecting family doctor request:', error);
-      alert('Failed to reject request');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const pendingAppointmentsCount = appointmentRequests.length;
-  const pendingFDRequestsCount = familyDoctorRequestsList.length;
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-500 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Requests</h1>
-          <p className="text-gray-600 mt-1 text-sm md:text-base">Manage appointment and family doctor requests</p>
-        </div>
-        {(pendingAppointmentsCount > 0 || pendingFDRequestsCount > 0) && (
-          <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 md:px-4 py-2 self-start">
-            <AlertCircle className="text-yellow-600" size={20} />
-            <span className="text-yellow-900 font-semibold">
-              {pendingAppointmentsCount + pendingFDRequestsCount} Pending Request
-              {pendingAppointmentsCount + pendingFDRequestsCount !== 1 ? 's' : ''}
-            </span>
-          </div>
-        )}
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-midnight-900">{t('nav.requests')}</h1>
+        <p className="text-midnight-600">{t('requests.subtitle')}</p>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="flex space-x-1 md:space-x-4 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('appointments')}
-            className={`flex items-center gap-1.5 md:gap-2 px-2 md:px-4 py-3 text-xs md:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'appointments'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Calendar size={18} />
-            Appointment Requests
-            {pendingAppointmentsCount > 0 && (
-              <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-xs font-semibold">
-                {pendingAppointmentsCount}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('familyDoctor')}
-            className={`flex items-center gap-1.5 md:gap-2 px-2 md:px-4 py-3 text-xs md:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'familyDoctor'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Heart size={18} />
-            Family Doctor Requests
-            {pendingFDRequestsCount > 0 && (
-              <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-xs font-semibold">
-                {pendingFDRequestsCount}
-              </span>
-            )}
-          </button>
-        </nav>
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setActiveTab('appointments')}
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+            activeTab === 'appointments'
+              ? 'bg-primary-500 text-white'
+              : 'bg-slate-100 text-midnight-600 hover:bg-slate-200'
+          }`}
+        >
+          {t('requests.appointmentRequests')} ({pendingAppointments.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('familyDoctor')}
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+            activeTab === 'familyDoctor'
+              ? 'bg-primary-500 text-white'
+              : 'bg-slate-100 text-midnight-600 hover:bg-slate-200'
+          }`}
+        >
+          {t('requests.familyDoctorRequests')} ({doctorRequests.filter(r => r.status === FamilyDoctorRequestStatus.PENDING).length})
+        </button>
       </div>
 
-      {/* Appointment Requests Tab */}
+      {/* Appointment Requests */}
       {activeTab === 'appointments' && (
-        <div className="space-y-4">
-          {appointmentRequests.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-              <Calendar className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Pending Appointments</h3>
-              <p className="text-gray-600">All appointment requests have been processed</p>
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+          {pendingAppointments.length === 0 ? (
+            <div className="p-8 text-center">
+              <Calendar className="w-12 h-12 text-midnight-300 mx-auto mb-3" />
+              <p className="text-midnight-600">{t('requests.noAppointments')}</p>
             </div>
           ) : (
-            appointmentRequests.map((appointment) => (
-              <div
-                key={appointment.id}
-                className="bg-white rounded-xl shadow-sm border-2 border-gray-200 hover:border-primary-200 transition-all p-4 md:p-6"
-              >
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 md:w-12 h-10 md:h-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                        <User className="text-blue-600" size={20} />
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="font-semibold text-gray-900 text-base md:text-lg truncate">
-                          {appointment.patient?.user.firstName} {appointment.patient?.user.lastName}
-                        </h3>
-                        <p className="text-sm text-gray-600 truncate">{appointment.patient?.user.email}</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mt-4">
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <Calendar size={16} className="text-gray-500" />
-                        <span className="text-sm">
-                          {new Date(appointment.dateTime).toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <Clock size={16} className="text-gray-500" />
-                        <span className="text-sm">
-                          {new Date(appointment.dateTime).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      </div>
-                    </div>
-
-                    {appointment.reason && (
-                      <div className="mt-4 bg-gray-50 rounded-lg p-3 border border-gray-200">
-                        <div className="flex items-center gap-2 mb-1">
-                          <FileText size={16} className="text-gray-600" />
-                          <span className="text-sm font-medium text-gray-700">Reason</span>
-                        </div>
-                        <p className="text-gray-900 text-sm">{appointment.reason}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-row md:flex-col gap-2">
-                    <button
-                      onClick={() => {
-                        setSelectedAppointment(appointment);
-                        setShowAppointmentModal(true);
-                      }}
-                      className="flex-1 md:flex-none px-3 md:px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm text-center"
-                    >
-                      Details
-                    </button>
-                    <button
-                      onClick={() => handleApproveAppointment(appointment.id)}
-                      className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 md:px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
-                    >
-                      <CheckCircle size={16} />
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedAppointment(appointment);
-                        setShowAppointmentModal(true);
-                      }}
-                      className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 md:px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
-                    >
-                      <XCircle size={16} />
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* Family Doctor Requests Tab */}
-      {activeTab === 'familyDoctor' && (
-        <div className="space-y-4">
-          {familyDoctorRequestsList.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-              <Heart className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Pending Requests</h3>
-              <p className="text-gray-600">All family doctor requests have been processed</p>
-            </div>
-          ) : (
-            familyDoctorRequestsList.map((request) => (
-              <div
-                key={request.id}
-                className="bg-white rounded-xl shadow-sm border-2 border-gray-200 hover:border-primary-200 transition-all p-4 md:p-6"
-              >
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 md:w-12 h-10 md:h-12 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                        <Heart className="text-purple-600" size={20} />
+            <div className="divide-y divide-slate-100">
+              {pendingAppointments.map((apt) => (
+                <div key={apt.id} className="p-4 hover:bg-slate-50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
+                        <Clock className="w-6 h-6 text-yellow-600" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900 text-lg">
-                          {request.patient?.user.firstName} {request.patient?.user.lastName}
-                        </h3>
-                        <p className="text-sm text-gray-600">{request.patient?.user.email}</p>
+                        <p className="font-medium text-midnight-900">
+                          {apt.patient?.user?.firstName} {apt.patient?.user?.lastName}
+                        </p>
+                        <p className="text-sm text-midnight-600">
+                          {new Date(apt.dateTime).toLocaleDateString()} - {new Date(apt.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                        {apt.reason && (
+                          <p className="text-sm text-midnight-500 mt-1">{apt.reason}</p>
+                        )}
                       </div>
                     </div>
-
-                    <div className="text-sm text-gray-600 mb-3">
-                      Requested on: {new Date(request.requestedAt).toLocaleDateString()}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleApproveAppointment(apt.id)}
+                        className="p-2 bg-green-100 text-green-600 hover:bg-green-200 rounded-lg transition-colors"
+                        title={t('common.approve')}
+                      >
+                        <Check size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleRejectAppointment(apt.id)}
+                        className="p-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors"
+                        title={t('common.reject')}
+                      >
+                        <X size={18} />
+                      </button>
                     </div>
-
-                    {request.requestReason && (
-                      <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
-                        <div className="flex items-center gap-2 mb-1">
-                          <FileText size={16} className="text-purple-600" />
-                          <span className="text-sm font-medium text-purple-900">Patient's Reason</span>
-                        </div>
-                        <p className="text-purple-900 text-sm">{request.requestReason}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-row md:flex-col gap-2">
-                    <button
-                      onClick={() => {
-                        setSelectedFDRequest(request);
-                        setShowFDModal(true);
-                      }}
-                      className="flex-1 md:flex-none px-3 md:px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm text-center"
-                    >
-                      Details
-                    </button>
-                    <button
-                      onClick={() => handleApproveFDRequest(request.id)}
-                      className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 md:px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
-                    >
-                      <CheckCircle size={16} />
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedFDRequest(request);
-                        setShowFDModal(true);
-                      }}
-                      className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 md:px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
-                    >
-                      <XCircle size={16} />
-                      Reject
-                    </button>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
       )}
 
-      {/* Appointment Details Modal */}
-      <Modal
-        isOpen={showAppointmentModal}
-        onClose={() => {
-          setShowAppointmentModal(false);
-          setSelectedAppointment(null);
-          setResponseReason('');
-        }}
-        title="Appointment Request Details"
-        size="lg"
-      >
-        {selectedAppointment && (
-          <div className="space-y-6">
-            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-              <h4 className="font-semibold text-blue-900 mb-3">Patient Information</h4>
-              <div className="space-y-2 text-sm">
-                <p>
-                  <span className="text-blue-700 font-medium">Name:</span>{' '}
-                  <span className="text-blue-900">
-                    {selectedAppointment.patient?.user.firstName} {selectedAppointment.patient?.user.lastName}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-blue-700 font-medium">Email:</span>{' '}
-                  <span className="text-blue-900">{selectedAppointment.patient?.user.email}</span>
-                </p>
-                {selectedAppointment.patient?.user.phone && (
-                  <p>
-                    <span className="text-blue-700 font-medium">Phone:</span>{' '}
-                    <span className="text-blue-900">{selectedAppointment.patient.user.phone}</span>
-                  </p>
-                )}
-              </div>
+      {/* Family Doctor Requests */}
+      {activeTab === 'familyDoctor' && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+          {doctorRequests.length === 0 ? (
+            <div className="p-8 text-center">
+              <Inbox className="w-12 h-12 text-midnight-300 mx-auto mb-3" />
+              <p className="text-midnight-600">{t('requests.noRequests')}</p>
             </div>
-
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <h4 className="font-semibold text-gray-900 mb-3">Appointment Details</h4>
-              <div className="space-y-2 text-sm">
-                <p>
-                  <span className="text-gray-700 font-medium">Date:</span>{' '}
-                  <span className="text-gray-900">
-                    {new Date(selectedAppointment.dateTime).toLocaleDateString('en-US', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-gray-700 font-medium">Time:</span>{' '}
-                  <span className="text-gray-900">
-                    {new Date(selectedAppointment.dateTime).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-gray-700 font-medium">Duration:</span>{' '}
-                  <span className="text-gray-900">{selectedAppointment.duration} minutes</span>
-                </p>
-              </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {doctorRequests.map((request) => (
+                <div key={request.id} className="p-4 hover:bg-slate-50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
+                        <User className="w-6 h-6 text-primary-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-midnight-900">
+                          {request.patient?.user?.firstName} {request.patient?.user?.lastName}
+                        </p>
+                        <p className="text-sm text-midnight-600">
+                          {new Date(request.requestedAt).toLocaleDateString()}
+                        </p>
+                        {request.requestReason && (
+                          <p className="text-sm text-midnight-500 mt-1">{request.requestReason}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
+                        {request.status}
+                      </span>
+                      {request.status === FamilyDoctorRequestStatus.PENDING && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleApproveFamilyRequest(request.id)}
+                            className="p-2 bg-green-100 text-green-600 hover:bg-green-200 rounded-lg transition-colors"
+                            title={t('common.approve')}
+                          >
+                            <Check size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleRejectFamilyRequest(request.id)}
+                            className="p-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors"
+                            title={t('common.reject')}
+                          >
+                            <X size={18} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-
-            {selectedAppointment.reason && (
-              <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-                <h4 className="font-semibold text-yellow-900 mb-2">Reason for Visit</h4>
-                <p className="text-yellow-900 text-sm">{selectedAppointment.reason}</p>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Response Note (optional for approval, required for rejection)
-              </label>
-              <textarea
-                value={responseReason}
-                onChange={(e) => setResponseReason(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                rows={3}
-                placeholder="Add a note about your decision..."
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => handleApproveAppointment(selectedAppointment.id)}
-                disabled={processing}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
-              >
-                <CheckCircle size={20} />
-                {processing ? 'Processing...' : 'Approve'}
-              </button>
-              <button
-                onClick={() => handleRejectAppointment(selectedAppointment.id, responseReason)}
-                disabled={processing}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
-              >
-                <XCircle size={20} />
-                {processing ? 'Processing...' : 'Reject'}
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* Family Doctor Request Details Modal */}
-      <Modal
-        isOpen={showFDModal}
-        onClose={() => {
-          setShowFDModal(false);
-          setSelectedFDRequest(null);
-          setResponseReason('');
-        }}
-        title="Family Doctor Request Details"
-        size="lg"
-      >
-        {selectedFDRequest && (
-          <div className="space-y-6">
-            <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-              <h4 className="font-semibold text-purple-900 mb-3">Patient Information</h4>
-              <div className="space-y-2 text-sm">
-                <p>
-                  <span className="text-purple-700 font-medium">Name:</span>{' '}
-                  <span className="text-purple-900">
-                    {selectedFDRequest.patient?.user.firstName} {selectedFDRequest.patient?.user.lastName}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-purple-700 font-medium">Email:</span>{' '}
-                  <span className="text-purple-900">{selectedFDRequest.patient?.user.email}</span>
-                </p>
-                {selectedFDRequest.patient?.user.phone && (
-                  <p>
-                    <span className="text-purple-700 font-medium">Phone:</span>{' '}
-                    <span className="text-purple-900">{selectedFDRequest.patient.user.phone}</span>
-                  </p>
-                )}
-                {selectedFDRequest.patient?.address && (
-                  <p>
-                    <span className="text-purple-700 font-medium">Address:</span>{' '}
-                    <span className="text-purple-900">{selectedFDRequest.patient.address}</span>
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {selectedFDRequest.requestReason && (
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <h4 className="font-semibold text-gray-900 mb-2">Patient's Reason</h4>
-                <p className="text-gray-700">{selectedFDRequest.requestReason}</p>
-              </div>
-            )}
-
-            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-              <p className="text-sm text-blue-900">
-                <strong>Note:</strong> By approving this request, {selectedFDRequest.patient?.user.firstName}{' '}
-                {selectedFDRequest.patient?.user.lastName} will become your family patient, and you'll have ongoing
-                access to their medical records.
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Response Note (optional for approval, required for rejection)
-              </label>
-              <textarea
-                value={responseReason}
-                onChange={(e) => setResponseReason(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                rows={3}
-                placeholder="Add a note about your decision..."
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => handleApproveFDRequest(selectedFDRequest.id, responseReason)}
-                disabled={processing}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
-              >
-                <CheckCircle size={20} />
-                {processing ? 'Processing...' : 'Approve'}
-              </button>
-              <button
-                onClick={() => handleRejectFDRequest(selectedFDRequest.id, responseReason)}
-                disabled={processing}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
-              >
-                <XCircle size={20} />
-                {processing ? 'Processing...' : 'Reject'}
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,312 +1,183 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { appointments, patients } from '@/lib/api';
-import { Patient, Appointment } from '@/types';
-import Modal from '@/components/ui/Modal';
-import Badge from '@/components/ui/Badge';
-import MedicalRecordView from '@/components/medical-records/MedicalRecordView';
-import { User, Mail, Phone, MapPin, Users, Search, Edit2 } from 'lucide-react';
+import { useLanguage } from '@/lib/language-context';
+import { doctors, medicalRecords } from '@/lib/api';
+import { Patient, MedicalRecordSummary } from '@/types';
+import { FolderOpen, User, FileText, Heart, Pill, Syringe, AlertTriangle } from 'lucide-react';
 
-export default function DoctorPatientsPage() {
-  const [patientsList, setPatientsList] = useState<Patient[]>([]);
+interface PatientWithSummary extends Patient {
+  medicalSummary?: MedicalRecordSummary;
+}
+
+export default function PatientsPage() {
+  const { t } = useLanguage();
+  const [patients, setPatients] = useState<PatientWithSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [modalTab, setModalTab] = useState<'info' | 'medical' | 'appointments'>('info');
-  const [patientAppointments, setPatientAppointments] = useState<Appointment[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPatient, setSelectedPatient] = useState<PatientWithSummary | null>(null);
 
   useEffect(() => {
-    loadData();
+    loadPatients();
   }, []);
 
-  const loadData = async () => {
+  const loadPatients = async () => {
     try {
-      setLoading(true);
-      const patientsRes = await patients.getAll();
-      setPatientsList(patientsRes.data);
+      const res = await doctors.getMyFamilyPatients();
+      setPatients(res.data);
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('Error loading patients:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleViewPatient = async (patient: Patient) => {
-    setSelectedPatient(patient);
-    setShowModal(true);
-    setModalTab('info');
-
+  const loadPatientSummary = async (patient: PatientWithSummary) => {
     try {
-      const res = await appointments.getByPatientId(patient.id);
-      setPatientAppointments(res.data);
+      const res = await medicalRecords.getSummary(patient.id);
+      setSelectedPatient({ ...patient, medicalSummary: res.data });
     } catch (error) {
-      console.error('Error loading appointments:', error);
+      console.error('Error loading medical summary:', error);
+      setSelectedPatient(patient);
     }
   };
-
-  const calculateAge = (dateOfBirth?: Date) => {
-    if (!dateOfBirth) return 'N/A';
-    const today = new Date();
-    const birthDate = new Date(dateOfBirth);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
-  const getFamilyDoctorName = (patient: Patient) => {
-    if (!patient.familyDoctor) return 'None';
-    return `Dr. ${patient.familyDoctor.user.firstName} ${patient.familyDoctor.user.lastName}`;
-  };
-
-  const filteredPatients = patientsList.filter((patient) => {
-    if (!searchQuery) return true;
-    const search = searchQuery.toLowerCase();
-    const name = `${patient.user.firstName} ${patient.user.lastName}`.toLowerCase();
-    const email = patient.user.email.toLowerCase();
-    return name.includes(search) || email.includes(search);
-  });
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-500 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Patient Folder</h1>
-        <p className="text-gray-600 mt-1">View patient records and medical information</p>
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-midnight-900">{t('nav.patientFolder')}</h1>
+        <p className="text-midnight-600">{t('patients.subtitle')}</p>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-        <input
-          type="text"
-          placeholder="Search patients by name or email..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
-        />
-      </div>
-
-      {/* Results count */}
-      <div className="text-sm text-gray-500">
-        {filteredPatients.length} patient{filteredPatients.length !== 1 ? 's' : ''}
-        {searchQuery && ` found for "${searchQuery}"`}
-      </div>
-
-      {/* Patients Grid */}
-      {filteredPatients.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-          <Users className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            {searchQuery ? 'No matching patients' : 'No Patients Found'}
-          </h3>
-          <p className="text-gray-600">
-            {searchQuery ? 'Try adjusting your search' : 'No patients are available'}
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {filteredPatients.map((patient) => (
-            <div
-              key={patient.id}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6 hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => handleViewPatient(patient)}
-            >
-              <div className="flex items-start gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
-                  <User className="text-primary-600" size={24} />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">
-                    {patient.user.firstName} {patient.user.lastName}
-                  </h3>
-                  <p className="text-sm text-gray-500">Age: {calculateAge(patient.dateOfBirth)}</p>
-                </div>
-              </div>
-
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Mail size={16} />
-                  <span>{patient.user.email}</span>
-                </div>
-                {patient.user.phone && (
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Phone size={16} />
-                    <span>{patient.user.phone}</span>
-                  </div>
-                )}
-                {patient.address && (
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <MapPin size={16} />
-                    <span className="line-clamp-1">{patient.address}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Users size={16} />
-                  <span className="font-medium">{getFamilyDoctorName(patient)}</span>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleViewPatient(patient);
-                  }}
-                  className="w-full px-3 py-2 text-sm bg-primary-50 text-primary-600 rounded-lg hover:bg-primary-100 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Edit2 size={16} />
-                  View Details
-                </button>
-              </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Patient List */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="p-4 border-b border-slate-100">
+              <h2 className="font-semibold text-midnight-900">{t('patients.myPatients')}</h2>
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Patient Details Modal */}
-      <Modal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        title={selectedPatient ? `${selectedPatient.user.firstName} ${selectedPatient.user.lastName}` : ''}
-        size="2xl"
-      >
-        {selectedPatient && (
-          <div className="space-y-6">
-            {/* Tabs */}
-            <div className="border-b border-gray-200">
-              <nav className="flex space-x-1 md:space-x-4 overflow-x-auto">
-                {[
-                  { key: 'info' as const, label: 'Personal Info' },
-                  { key: 'medical' as const, label: 'Medical Records' },
-                  { key: 'appointments' as const, label: 'Appointments' },
-                ].map((tab) => (
+            {patients.length === 0 ? (
+              <div className="p-8 text-center">
+                <FolderOpen className="w-12 h-12 text-midnight-300 mx-auto mb-3" />
+                <p className="text-midnight-600">{t('common.noData')}</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
+                {patients.map((patient) => (
                   <button
-                    key={tab.key}
-                    onClick={() => setModalTab(tab.key)}
-                    className={`px-2 md:px-4 py-2 text-xs md:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                      modalTab === tab.key
-                        ? 'border-primary-500 text-primary-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    key={patient.id}
+                    onClick={() => loadPatientSummary(patient)}
+                    className={`w-full p-4 text-start hover:bg-slate-50 transition-colors ${
+                      selectedPatient?.id === patient.id ? 'bg-primary-50' : ''
                     }`}
                   >
-                    {tab.label}
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
+                        <span className="text-primary-600 font-medium text-sm">
+                          {patient.user?.firstName?.[0]}{patient.user?.lastName?.[0]}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-midnight-900">
+                          {patient.user?.firstName} {patient.user?.lastName}
+                        </p>
+                        <p className="text-sm text-midnight-500">{patient.user?.email}</p>
+                      </div>
+                    </div>
                   </button>
                 ))}
-              </nav>
-            </div>
-
-            {/* Tab Content */}
-            {modalTab === 'info' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                    <p className="text-gray-900">{selectedPatient.user.firstName}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                    <p className="text-gray-900">{selectedPatient.user.lastName}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <p className="text-gray-900">{selectedPatient.user.email}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                    <p className="text-gray-900">{selectedPatient.user.phone || 'Not specified'}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                    <p className="text-gray-900">
-                      {selectedPatient.dateOfBirth
-                        ? new Date(selectedPatient.dateOfBirth).toLocaleDateString()
-                        : 'Not specified'}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
-                    <p className="text-gray-900">{calculateAge(selectedPatient.dateOfBirth)}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                    <p className="text-gray-900">{selectedPatient.address || 'Not specified'}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact</label>
-                    <p className="text-gray-900">{selectedPatient.emergencyContact || 'Not specified'}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Family Doctor</label>
-                    <p className="text-gray-900">{getFamilyDoctorName(selectedPatient)}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {modalTab === 'medical' && (
-              <MedicalRecordView patientId={selectedPatient.id} readOnly={false} />
-            )}
-
-            {modalTab === 'appointments' && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Appointment History</h3>
-                {patientAppointments.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">No appointments found</p>
-                ) : (
-                  <div className="space-y-3">
-                    {patientAppointments
-                      .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime())
-                      .map((apt) => (
-                      <div key={apt.id} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="font-semibold text-gray-900">
-                              Dr. {apt.doctor?.user?.firstName} {apt.doctor?.user?.lastName}
-                            </p>
-                            <p className="text-sm text-gray-600">{apt.doctor?.specialty}</p>
-                            <p className="text-sm text-gray-600 mt-1">
-                              {new Date(apt.dateTime).toLocaleString()}
-                            </p>
-                            {apt.reason && <p className="text-sm text-gray-700 mt-2">{apt.reason}</p>}
-                            {apt.notes && (
-                              <div className="mt-2 bg-blue-50 rounded p-2">
-                                <p className="text-xs font-medium text-blue-700">Notes:</p>
-                                <p className="text-sm text-blue-900">{apt.notes}</p>
-                              </div>
-                            )}
-                            {apt.medications && (
-                              <div className="mt-2 bg-green-50 rounded p-2">
-                                <p className="text-xs font-medium text-green-700">Medications:</p>
-                                <p className="text-sm text-green-900">{apt.medications}</p>
-                              </div>
-                            )}
-                          </div>
-                          <Badge variant={apt.status === 'COMPLETED' ? 'success' : apt.status === 'CONFIRMED' ? 'info' : 'warning'}>
-                            {apt.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
           </div>
-        )}
-      </Modal>
+        </div>
+
+        {/* Patient Details */}
+        <div className="lg:col-span-2">
+          {selectedPatient ? (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+              <div className="p-6 border-b border-slate-100">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-primary-100 rounded-xl flex items-center justify-center">
+                    <User className="w-8 h-8 text-primary-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold text-midnight-900">
+                      {selectedPatient.user?.firstName} {selectedPatient.user?.lastName}
+                    </h2>
+                    <p className="text-midnight-600">{selectedPatient.user?.email}</p>
+                    {selectedPatient.user?.phone && (
+                      <p className="text-midnight-500 text-sm">{selectedPatient.user?.phone}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {selectedPatient.medicalSummary && (
+                <div className="p-6">
+                  <h3 className="font-semibold text-midnight-900 mb-4">{t('patients.medicalSummary')}</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-slate-50 p-4 rounded-xl">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Heart className="w-5 h-5 text-red-500" />
+                        <span className="text-sm text-midnight-600">{t('medicalRecord.conditions')}</span>
+                      </div>
+                      <p className="text-2xl font-bold text-midnight-900">
+                        {selectedPatient.medicalSummary.activeConditionsCount}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-xl">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertTriangle className="w-5 h-5 text-orange-500" />
+                        <span className="text-sm text-midnight-600">{t('medicalRecord.allergies')}</span>
+                      </div>
+                      <p className="text-2xl font-bold text-midnight-900">
+                        {selectedPatient.medicalSummary.allergiesCount}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-xl">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Pill className="w-5 h-5 text-blue-500" />
+                        <span className="text-sm text-midnight-600">{t('medicalRecord.medications')}</span>
+                      </div>
+                      <p className="text-2xl font-bold text-midnight-900">
+                        {selectedPatient.medicalSummary.activeMedicationsCount}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-xl">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Syringe className="w-5 h-5 text-green-500" />
+                        <span className="text-sm text-midnight-600">{t('medicalRecord.vaccinations')}</span>
+                      </div>
+                      <p className="text-2xl font-bold text-midnight-900">
+                        {selectedPatient.medicalSummary.vaccinationsCount}
+                      </p>
+                    </div>
+                  </div>
+
+                  {selectedPatient.medicalSummary.bloodType && (
+                    <div className="mt-4 p-4 bg-red-50 rounded-xl">
+                      <p className="text-sm text-midnight-600">{t('medicalRecord.bloodType')}</p>
+                      <p className="text-lg font-bold text-red-600">{selectedPatient.medicalSummary.bloodType}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-8 text-center">
+              <FileText className="w-12 h-12 text-midnight-300 mx-auto mb-3" />
+              <p className="text-midnight-600">{t('patients.selectPatient')}</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,23 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { users, doctors, appointments } from '@/lib/api';
-import { DashboardStats, User, Doctor } from '@/types';
-import { Trash2, Plus, Users as UsersIcon, Calendar, Stethoscope, CheckCircle } from 'lucide-react';
+import { useLanguage } from '@/lib/language-context';
+import { appointments, doctors, patients, users } from '@/lib/api';
+import { DashboardStats, Doctor, User } from '@/types';
+import { Users, Stethoscope, Calendar, CheckCircle, Clock, XCircle, TrendingUp } from 'lucide-react';
 
 export default function AdminPage() {
+  const { t } = useLanguage();
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [usersList, setUsersList] = useState<User[]>([]);
-  const [showDoctorForm, setShowDoctorForm] = useState(false);
-  const [doctorForm, setDoctorForm] = useState({
-    email: '',
-    password: '',
-    firstName: '',
-    lastName: '',
-    specialty: '',
-    licenseNumber: '',
-  });
-  const [message, setMessage] = useState('');
+  const [doctorsCount, setDoctorsCount] = useState(0);
+  const [patientsCount, setPatientsCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadData();
@@ -25,276 +19,145 @@ export default function AdminPage() {
 
   const loadData = async () => {
     try {
-      const [statsRes, usersRes] = await Promise.all([
+      const [statsRes, doctorsRes, patientsRes] = await Promise.all([
         appointments.getStats(),
-        users.getAll(),
+        doctors.getAll(),
+        patients.getAll(),
       ]);
       setStats(statsRes.data);
-      setUsersList(usersRes.data);
-    } catch (err) {
-      console.error('Error loading data:', err);
+      setDoctorsCount(doctorsRes.data.length);
+      setPatientsCount(patientsRes.data.length);
+    } catch (error) {
+      console.error('Error loading admin data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleCreateDoctor = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await doctors.create({
-        user: {
-          email: doctorForm.email,
-          password: doctorForm.password,
-          firstName: doctorForm.firstName,
-          lastName: doctorForm.lastName,
-          role: 'DOCTOR',
-        },
-        specialty: doctorForm.specialty,
-        licenseNumber: doctorForm.licenseNumber,
-      });
-      setMessage('Doctor created successfully!');
-      setShowDoctorForm(false);
-      setDoctorForm({
-        email: '',
-        password: '',
-        firstName: '',
-        lastName: '',
-        specialty: '',
-        licenseNumber: '',
-      });
-      loadData();
-    } catch (err) {
-      console.error('Error creating doctor:', err);
-    }
-  };
-
-  const handleDeleteUser = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this user?')) return;
-    try {
-      await users.delete(id);
-      loadData();
-    } catch (err) {
-      console.error('Error deleting user:', err);
-    }
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-500 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin Panel</h1>
-      <p className="text-gray-500 mb-8">Manage users and system settings</p>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-midnight-900">{t('admin.overview')}</h1>
+        <p className="text-midnight-600">{t('admin.overviewSubtitle')}</p>
+      </div>
 
-      {message && (
-        <div className="bg-green-50 text-green-600 p-4 rounded-lg mb-6">{message}</div>
-      )}
-
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-                <UsersIcon className="text-primary-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900">{usersList.length}</p>
-              </div>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-midnight-600">{t('admin.totalPatients')}</p>
+              <p className="text-3xl font-bold text-midnight-900">{patientsCount}</p>
             </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <Calendar className="text-green-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Total Appointments</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <Stethoscope className="text-yellow-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Pending</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <CheckCircle className="text-blue-600" size={24} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Completed</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.completed}</p>
-              </div>
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Users className="text-blue-600" size={24} />
             </div>
           </div>
         </div>
-      )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Users Management</h2>
-          <button
-            onClick={() => setShowDoctorForm(true)}
-            className="flex items-center gap-2 bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors"
-          >
-            <Plus size={18} />
-            Add Doctor
-          </button>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-midnight-600">{t('admin.totalDoctors')}</p>
+              <p className="text-3xl font-bold text-midnight-900">{doctorsCount}</p>
+            </div>
+            <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
+              <Stethoscope className="text-primary-600" size={24} />
+            </div>
+          </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {usersList.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    {user.firstName} {user.lastName}
-                  </td>
-                  <td className="px-6 py-4 text-gray-600">{user.email}</td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        user.role === 'ADMIN'
-                          ? 'bg-purple-100 text-purple-800'
-                          : user.role === 'DOCTOR'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}
-                    >
-                      {user.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    {user.role !== 'ADMIN' && (
-                      <button
-                        onClick={() => handleDeleteUser(user.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-midnight-600">{t('appointments.title')}</p>
+              <p className="text-3xl font-bold text-midnight-900">{stats?.total || 0}</p>
+            </div>
+            <div className="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center">
+              <Calendar className="text-teal-600" size={24} />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-midnight-600">{t('appointments.status.completed')}</p>
+              <p className="text-3xl font-bold text-green-600">{stats?.completed || 0}</p>
+            </div>
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <CheckCircle className="text-green-600" size={24} />
+            </div>
+          </div>
         </div>
       </div>
 
-      {showDoctorForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Add New Doctor</h2>
-
-            <form onSubmit={handleCreateDoctor} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  placeholder="First Name"
-                  value={doctorForm.firstName}
-                  onChange={(e) =>
-                    setDoctorForm({ ...doctorForm, firstName: e.target.value })
-                  }
-                  className="w-full p-3 border border-gray-200 rounded-lg"
-                  required
-                />
-                <input
-                  type="text"
-                  placeholder="Last Name"
-                  value={doctorForm.lastName}
-                  onChange={(e) =>
-                    setDoctorForm({ ...doctorForm, lastName: e.target.value })
-                  }
-                  className="w-full p-3 border border-gray-200 rounded-lg"
-                  required
-                />
+      {/* Appointments Stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+          <h2 className="text-lg font-semibold text-midnight-900 mb-4">{t('admin.appointmentStats')}</h2>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Clock className="text-yellow-600" size={20} />
+                <span className="text-midnight-700">{t('appointments.status.pending')}</span>
               </div>
-
-              <input
-                type="email"
-                placeholder="Email"
-                value={doctorForm.email}
-                onChange={(e) => setDoctorForm({ ...doctorForm, email: e.target.value })}
-                className="w-full p-3 border border-gray-200 rounded-lg"
-                required
-              />
-
-              <input
-                type="password"
-                placeholder="Password"
-                value={doctorForm.password}
-                onChange={(e) =>
-                  setDoctorForm({ ...doctorForm, password: e.target.value })
-                }
-                className="w-full p-3 border border-gray-200 rounded-lg"
-                required
-                minLength={6}
-              />
-
-              <input
-                type="text"
-                placeholder="Specialty"
-                value={doctorForm.specialty}
-                onChange={(e) =>
-                  setDoctorForm({ ...doctorForm, specialty: e.target.value })
-                }
-                className="w-full p-3 border border-gray-200 rounded-lg"
-                required
-              />
-
-              <input
-                type="text"
-                placeholder="License Number"
-                value={doctorForm.licenseNumber}
-                onChange={(e) =>
-                  setDoctorForm({ ...doctorForm, licenseNumber: e.target.value })
-                }
-                className="w-full p-3 border border-gray-200 rounded-lg"
-                required
-              />
-
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowDoctorForm(false)}
-                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-primary-500 text-white py-3 rounded-lg hover:bg-primary-600 transition-colors"
-                >
-                  Create Doctor
-                </button>
+              <span className="text-xl font-bold text-yellow-600">{stats?.pending || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="text-green-600" size={20} />
+                <span className="text-midnight-700">{t('appointments.status.confirmed')}</span>
               </div>
-            </form>
+              <span className="text-xl font-bold text-green-600">{stats?.confirmed || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <TrendingUp className="text-blue-600" size={20} />
+                <span className="text-midnight-700">{t('appointments.status.completed')}</span>
+              </div>
+              <span className="text-xl font-bold text-blue-600">{stats?.completed || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <XCircle className="text-red-600" size={20} />
+                <span className="text-midnight-700">{t('appointments.status.cancelled')}</span>
+              </div>
+              <span className="text-xl font-bold text-red-600">{stats?.cancelled || 0}</span>
+            </div>
           </div>
         </div>
-      )}
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+          <h2 className="text-lg font-semibold text-midnight-900 mb-4">{t('admin.quickActions')}</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <a href="/admin/patients" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors text-center">
+              <Users className="w-8 h-8 text-primary-500 mx-auto mb-2" />
+              <p className="text-sm font-medium text-midnight-700">{t('admin.managePatients')}</p>
+            </a>
+            <a href="/admin/doctors" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors text-center">
+              <Stethoscope className="w-8 h-8 text-primary-500 mx-auto mb-2" />
+              <p className="text-sm font-medium text-midnight-700">{t('admin.manageDoctors')}</p>
+            </a>
+            <a href="/appointments" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors text-center">
+              <Calendar className="w-8 h-8 text-primary-500 mx-auto mb-2" />
+              <p className="text-sm font-medium text-midnight-700">{t('admin.viewAppointments')}</p>
+            </a>
+            <a href="/admin/settings" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors text-center">
+              <TrendingUp className="w-8 h-8 text-primary-500 mx-auto mb-2" />
+              <p className="text-sm font-medium text-midnight-700">{t('admin.settings')}</p>
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

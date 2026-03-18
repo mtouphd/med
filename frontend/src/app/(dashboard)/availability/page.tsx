@@ -1,329 +1,174 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doctors } from '@/lib/api';
-import { Doctor, UserRole } from '@/types';
 import { useAuth } from '@/lib/auth-context';
-import { CalendarDays, Save, RotateCcw, CheckCircle, AlertCircle } from 'lucide-react';
+import { useLanguage } from '@/lib/language-context';
+import { doctors } from '@/lib/api';
+import { Doctor } from '@/types';
+import { CalendarDays, Clock, Save } from 'lucide-react';
 
-type SlotStatus = 'available' | 'unavailable' | 'maybe';
-
-interface WeeklySchedule {
-  [day: string]: {
-    [hour: string]: SlotStatus;
-  };
+interface Schedule {
+  [key: string]: { start: string; end: string; enabled: boolean };
 }
 
-const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const HOURS = [
-  '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
-  '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
-  '18:00', '19:00',
-];
+const defaultSchedule: Schedule = {
+  monday: { start: '09:00', end: '17:00', enabled: true },
+  tuesday: { start: '09:00', end: '17:00', enabled: true },
+  wednesday: { start: '09:00', end: '17:00', enabled: true },
+  thursday: { start: '09:00', end: '17:00', enabled: true },
+  friday: { start: '09:00', end: '17:00', enabled: true },
+  saturday: { start: '09:00', end: '12:00', enabled: false },
+  sunday: { start: '09:00', end: '12:00', enabled: false },
+};
 
-function getDefaultSchedule(): WeeklySchedule {
-  const schedule: WeeklySchedule = {};
-  for (const day of DAYS) {
-    schedule[day] = {};
-    for (const hour of HOURS) {
-      const h = parseInt(hour);
-      const isWeekday = day !== 'sunday' && day !== 'saturday';
-      const isMorning = h >= 8 && h <= 11;
-      const isAfternoon = h >= 13 && h <= 16;
-      schedule[day][hour] = isWeekday && (isMorning || isAfternoon) ? 'available' : 'unavailable';
-    }
-  }
-  return schedule;
-}
-
-function isOldFormat(schedule: any): boolean {
-  if (!schedule) return false;
-  const firstDay = Object.values(schedule)[0] as any;
-  return firstDay && ('start' in firstDay || 'end' in firstDay || 'enabled' in firstDay);
-}
-
-function convertOldToNew(oldSchedule: any): WeeklySchedule {
-  const newSchedule = getDefaultSchedule();
-  for (const day of DAYS) {
-    const dayData = oldSchedule[day];
-    if (!dayData) continue;
-    if (!dayData.enabled) {
-      for (const hour of HOURS) {
-        newSchedule[day][hour] = 'unavailable';
-      }
-    } else {
-      const startH = parseInt(dayData.start);
-      const endH = parseInt(dayData.end);
-      for (const hour of HOURS) {
-        const h = parseInt(hour);
-        newSchedule[day][hour] = h >= startH && h < endH ? 'available' : 'unavailable';
-      }
-    }
-  }
-  return newSchedule;
-}
-
-function cycleStatus(status: SlotStatus): SlotStatus {
-  switch (status) {
-    case 'unavailable': return 'available';
-    case 'available': return 'maybe';
-    case 'maybe': return 'unavailable';
-  }
-}
+const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 export default function AvailabilityPage() {
+  const { t } = useLanguage();
   const { user } = useAuth();
-  const [doctor, setDoctor] = useState<Doctor | null>(null);
-  const [schedule, setSchedule] = useState<WeeklySchedule>(getDefaultSchedule());
-  const [originalSchedule, setOriginalSchedule] = useState<string>('');
+  const [schedule, setSchedule] = useState<Schedule>(defaultSchedule);
+  const [doctorId, setDoctorId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
-    loadDoctor();
-  }, [user]);
+    loadDoctorSchedule();
+  }, []);
 
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => setMessage(null), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [message]);
-
-  const loadDoctor = async () => {
-    if (!user || user.role !== UserRole.DOCTOR) {
-      setLoading(false);
-      return;
-    }
+  const loadDoctorSchedule = async () => {
     try {
       const res = await doctors.getAll();
-      const doctorList = Array.isArray(res.data) ? res.data : (res.data as any)?.data || [];
-      const myDoctor = doctorList.find((d: Doctor) => d.userId === user.id);
+      const myDoctor = res.data.find((d: Doctor) => d.user.id === user?.id);
       if (myDoctor) {
-        setDoctor(myDoctor);
-        let sched: WeeklySchedule;
-        if (myDoctor.schedule && !isOldFormat(myDoctor.schedule)) {
-          sched = myDoctor.schedule as unknown as WeeklySchedule;
-        } else if (myDoctor.schedule && isOldFormat(myDoctor.schedule)) {
-          sched = convertOldToNew(myDoctor.schedule);
-        } else {
-          sched = getDefaultSchedule();
+        setDoctorId(myDoctor.id);
+        if (myDoctor.schedule) {
+          setSchedule({ ...defaultSchedule, ...myDoctor.schedule });
         }
-        setSchedule(sched);
-        setOriginalSchedule(JSON.stringify(sched));
       }
-    } catch (err) {
-      console.error('Error loading doctor:', err);
+    } catch (error) {
+      console.error('Error loading schedule:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCellClick = (day: string, hour: string) => {
-    setSchedule((prev) => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        [hour]: cycleStatus(prev[day][hour]),
-      },
-    }));
-  };
-
   const handleSave = async () => {
-    if (!doctor) return;
+    if (!doctorId) return;
+
     setSaving(true);
+    setMessage('');
     try {
-      await doctors.updateSchedule(doctor.id, schedule);
-      setOriginalSchedule(JSON.stringify(schedule));
-      setMessage({ text: 'Availability schedule saved successfully.', type: 'success' });
-    } catch (err) {
-      console.error('Error saving schedule:', err);
-      setMessage({ text: 'Error saving schedule.', type: 'error' });
+      await doctors.updateSchedule(doctorId, schedule);
+      setMessage(t('availability.saved'));
+    } catch (error) {
+      console.error('Error saving schedule:', error);
+      setMessage(t('common.error'));
     } finally {
       setSaving(false);
     }
   };
 
-  const handleReset = () => {
-    setSchedule(getDefaultSchedule());
+  const updateDay = (day: string, field: 'start' | 'end' | 'enabled', value: string | boolean) => {
+    setSchedule(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        [field]: value,
+      },
+    }));
   };
 
-  const hasChanges = JSON.stringify(schedule) !== originalSchedule;
-
-  const getCellStyle = (status: SlotStatus): string => {
-    switch (status) {
-      case 'available':
-        return 'bg-green-400 hover:bg-green-500 border-green-500';
-      case 'maybe':
-        return 'bg-maybe-pattern hover:opacity-80 border-amber-400';
-      case 'unavailable':
-        return 'bg-white hover:bg-gray-100 border-gray-200';
-    }
+  const getDayLabel = (day: string) => {
+    return t(`availability.days.${day}`);
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
-      </div>
-    );
-  }
-
-  if (!doctor) {
-    return (
-      <div className="text-center text-gray-500 py-12">
-        Doctor profile not found.
+        <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-500 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
     <div>
-      <style jsx>{`
-        .bg-maybe-pattern {
-          background: repeating-linear-gradient(
-            -45deg,
-            #fbbf24,
-            #fbbf24 4px,
-            #fef3c7 4px,
-            #fef3c7 8px
-          );
-        }
-      `}</style>
-
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="bg-primary-100 p-2 rounded-lg">
-            <CalendarDays className="text-primary-600" size={24} />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">My Availability Schedule</h1>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-midnight-900">{t('nav.availability')}</h1>
+          <p className="text-midnight-600">{t('availability.subtitle')}</p>
         </div>
-        <p className="text-gray-500 ml-12">
-          Click on the cells to change your availability slots. Changes apply to every week.
-        </p>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50"
+        >
+          <Save size={20} />
+          {saving ? t('common.saving') : t('common.save')}
+        </button>
       </div>
 
       {message && (
-        <div
-          className={`flex items-center gap-2 p-4 rounded-lg mb-6 ${
-            message.type === 'success'
-              ? 'bg-green-50 text-green-700 border border-green-200'
-              : 'bg-red-50 text-red-700 border border-red-200'
-          }`}
-        >
-          {message.type === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
-          <span className="font-medium">{message.text}</span>
+        <div className={`mb-4 p-3 rounded-xl text-sm ${message === t('availability.saved') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+          {message}
         </div>
       )}
 
-      {/* Legend + Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
-        <div className="flex items-center gap-3 md:gap-6 text-xs md:text-sm flex-wrap">
-          <div className="flex items-center gap-1.5">
-            <div className="w-5 h-5 md:w-6 md:h-6 rounded border-2 border-green-500 bg-green-400"></div>
-            <span className="text-gray-700">Available</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-5 h-5 md:w-6 md:h-6 rounded border-2 border-gray-200 bg-white"></div>
-            <span className="text-gray-700">Unavailable</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-5 h-5 md:w-6 md:h-6 rounded border-2 border-amber-400" style={{
-              background: 'repeating-linear-gradient(-45deg, #fbbf24, #fbbf24 4px, #fef3c7 4px, #fef3c7 8px)',
-            }}></div>
-            <span className="text-gray-700">Maybe</span>
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="p-4 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="w-5 h-5 text-primary-500" />
+            <h2 className="font-semibold text-midnight-900">{t('availability.weeklySchedule')}</h2>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-3">
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-1.5 px-3 md:px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-          >
-            <RotateCcw size={16} />
-            Reset
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!hasChanges || saving}
-            className={`flex items-center gap-1.5 px-4 md:px-5 py-2 text-sm rounded-lg font-medium transition-colors ${
-              hasChanges && !saving
-                ? 'bg-primary-500 text-white hover:bg-primary-600 shadow-sm'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            }`}
-          >
-            {saving ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-            ) : (
-              <Save size={16} />
-            )}
-            Save
-          </button>
+        <div className="divide-y divide-slate-100">
+          {days.map((day) => (
+            <div key={day} className="p-4 hover:bg-slate-50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={schedule[day]?.enabled ?? false}
+                      onChange={(e) => updateDay(day, 'enabled', e.target.checked)}
+                      className="w-5 h-5 rounded border-slate-300 text-primary-500 focus:ring-primary-500"
+                    />
+                    <span className={`font-medium ${schedule[day]?.enabled ? 'text-midnight-900' : 'text-midnight-400'}`}>
+                      {getDayLabel(day)}
+                    </span>
+                  </label>
+                </div>
+
+                {schedule[day]?.enabled && (
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Clock size={16} className="text-midnight-400" />
+                      <input
+                        type="time"
+                        value={schedule[day]?.start ?? '09:00'}
+                        onChange={(e) => updateDay(day, 'start', e.target.value)}
+                        className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                      />
+                      <span className="text-midnight-400">-</span>
+                      <input
+                        type="time"
+                        value={schedule[day]?.end ?? '17:00'}
+                        onChange={(e) => updateDay(day, 'end', e.target.value)}
+                        className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {!schedule[day]?.enabled && (
+                  <span className="text-sm text-midnight-400">{t('availability.closed')}</span>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-
-      {/* Calendar Grid */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr>
-                <th className="w-14 md:w-20 px-1 md:px-3 py-2 md:py-3 bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase border-b border-r border-gray-200">
-                  Time
-                </th>
-                {DAY_LABELS.map((label, i) => (
-                  <th
-                    key={DAYS[i]}
-                    className={`px-2 py-3 text-center text-sm font-semibold border-b border-r last:border-r-0 border-gray-200 ${
-                      i === 0 || i === 6 ? 'bg-gray-100 text-gray-500' : 'bg-gray-50 text-gray-700'
-                    }`}
-                  >
-                    {label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {HOURS.map((hour) => (
-                <tr key={hour}>
-                  <td className="px-1 md:px-3 py-0 text-xs font-mono text-gray-500 border-r border-b border-gray-200 bg-gray-50 whitespace-nowrap">
-                    {hour}
-                  </td>
-                  {DAYS.map((day) => {
-                    const status = schedule[day]?.[hour] || 'unavailable';
-                    return (
-                      <td
-                        key={`${day}-${hour}`}
-                        className="p-0.5 border-r border-b last:border-r-0 border-gray-100"
-                      >
-                        <button
-                          onClick={() => handleCellClick(day, hour)}
-                          className={`w-full h-8 md:h-10 rounded border-2 cursor-pointer transition-all ${getCellStyle(status)}`}
-                          style={status === 'maybe' ? {
-                            background: 'repeating-linear-gradient(-45deg, #fbbf24, #fbbf24 4px, #fef3c7 4px, #fef3c7 8px)',
-                          } : undefined}
-                          title={`${DAY_LABELS[DAYS.indexOf(day)]} ${hour} - ${
-                            status === 'available' ? 'Available' : status === 'maybe' ? 'Maybe available' : 'Unavailable'
-                          }`}
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {hasChanges && (
-        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700 flex items-center gap-2">
-          <AlertCircle size={16} />
-          You have unsaved changes.
-        </div>
-      )}
     </div>
   );
 }

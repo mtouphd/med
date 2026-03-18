@@ -1,9 +1,14 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
+import { LanguageProvider } from '@/lib/language-context';
 
-const inter = Inter({ subsets: ['latin'] });
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700', '800'],
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'MedApp - Medical Appointment Management',
@@ -17,8 +22,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <AuthProvider>{children}</AuthProvider>
+      <body className={plusJakarta.className}>
+        <LanguageProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </LanguageProvider>
       </body>
     </html>
   );
