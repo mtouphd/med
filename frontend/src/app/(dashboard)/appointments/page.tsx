@@ -3,21 +3,17 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useLanguage } from '@/lib/language-context';
-import { appointments, doctors } from '@/lib/api';
-import { Appointment, Doctor, UserRole, AppointmentStatus } from '@/types';
-import { Calendar, Clock, Plus, X, Check, XCircle } from 'lucide-react';
+import { appointments } from '@/lib/api';
+import { Appointment, UserRole, AppointmentStatus } from '@/types';
+import { Calendar, Clock, Check, XCircle, CalendarPlus, List } from 'lucide-react';
+import { AppointmentCalendar } from '@/components/appointments';
 
 export default function AppointmentsPage() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const [appointmentsList, setAppointmentsList] = useState<Appointment[]>([]);
-  const [doctorsList, setDoctorsList] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [selectedDoctor, setSelectedDoctor] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedTime, setSelectedTime] = useState('');
-  const [reason, setReason] = useState('');
+  const [activeTab, setActiveTab] = useState<'calendar' | 'list'>('calendar');
 
   useEffect(() => {
     loadData();
@@ -27,35 +23,10 @@ export default function AppointmentsPage() {
     try {
       const appointmentsRes = await appointments.getMy();
       setAppointmentsList(appointmentsRes.data);
-
-      if (user?.role === UserRole.PATIENT) {
-        const doctorsRes = await doctors.getAll();
-        setDoctorsList(doctorsRes.data);
-      }
     } catch (error) {
       console.error('Error loading appointments:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleCreateAppointment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const dateTime = new Date(`${selectedDate}T${selectedTime}`);
-      await appointments.create({
-        doctorId: selectedDoctor,
-        dateTime: dateTime.toISOString(),
-        reason,
-      });
-      setShowModal(false);
-      setSelectedDoctor('');
-      setSelectedDate('');
-      setSelectedTime('');
-      setReason('');
-      loadData();
-    } catch (error) {
-      console.error('Error creating appointment:', error);
     }
   };
 
@@ -113,161 +84,110 @@ export default function AppointmentsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-midnight-900">{t('appointments.title')}</h1>
           <p className="text-midnight-600">{t('appointments.subtitle')}</p>
         </div>
+
+        {/* Tab switcher for patients */}
         {user?.role === UserRole.PATIENT && (
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors"
-          >
-            <Plus size={20} />
-            {t('appointments.new')}
-          </button>
+          <div className="flex bg-slate-100 rounded-full p-1">
+            <button
+              onClick={() => setActiveTab('calendar')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                activeTab === 'calendar'
+                  ? 'bg-white text-primary-700 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-800'
+              }`}
+            >
+              <CalendarPlus size={16} />
+              {t('calendar.newAppointment')}
+            </button>
+            <button
+              onClick={() => setActiveTab('list')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                activeTab === 'list'
+                  ? 'bg-white text-primary-700 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-800'
+              }`}
+            >
+              <List size={16} />
+              {t('calendar.myAppointments')}
+            </button>
+          </div>
         )}
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-        {appointmentsList.length === 0 ? (
-          <div className="p-8 text-center">
-            <Calendar className="w-12 h-12 text-midnight-300 mx-auto mb-3" />
-            <p className="text-midnight-600">{t('common.noData')}</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {appointmentsList.map((apt) => (
-              <div key={apt.id} className="p-4 hover:bg-slate-50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
-                      <Calendar className="w-6 h-6 text-primary-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-midnight-900">
-                        {user?.role === UserRole.PATIENT
-                          ? `Dr. ${apt.doctor?.user?.firstName} ${apt.doctor?.user?.lastName}`
-                          : `${apt.patient?.user?.firstName} ${apt.patient?.user?.lastName}`}
-                      </p>
-                      <div className="flex items-center gap-2 text-sm text-midnight-600">
-                        <Clock size={14} />
-                        <span>
-                          {new Date(apt.dateTime).toLocaleDateString()} - {new Date(apt.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+      {/* Calendar view for patients */}
+      {user?.role === UserRole.PATIENT && activeTab === 'calendar' && (
+        <AppointmentCalendar onAppointmentCreated={loadData} />
+      )}
+
+      {/* Appointments list */}
+      {(user?.role !== UserRole.PATIENT || activeTab === 'list') && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+          {appointmentsList.length === 0 ? (
+            <div className="p-8 text-center">
+              <Calendar className="w-12 h-12 text-midnight-300 mx-auto mb-3" />
+              <p className="text-midnight-600">{t('common.noData')}</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {appointmentsList.map((apt) => (
+                <div key={apt.id} className="p-4 hover:bg-slate-50 transition-colors">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Calendar className="w-6 h-6 text-primary-600" />
                       </div>
-                      {apt.reason && (
-                        <p className="text-sm text-midnight-500 mt-1">{apt.reason}</p>
+                      <div className="min-w-0">
+                        <p className="font-medium text-midnight-900 truncate">
+                          {user?.role === UserRole.PATIENT
+                            ? `Dr. ${apt.doctor?.user?.firstName} ${apt.doctor?.user?.lastName}`
+                            : `${apt.patient?.user?.firstName} ${apt.patient?.user?.lastName}`}
+                        </p>
+                        <div className="flex items-center gap-2 text-sm text-midnight-600">
+                          <Clock size={14} />
+                          <span>
+                            {new Date(apt.dateTime).toLocaleDateString()} - {new Date(apt.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        {apt.reason && (
+                          <p className="text-sm text-midnight-500 mt-1 truncate">{apt.reason}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0 sm:ml-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(apt.status)}`}>
+                        {getStatusLabel(apt.status)}
+                      </span>
+                      {apt.status === AppointmentStatus.PENDING && user?.role !== UserRole.PATIENT && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleApprove(apt.id)}
+                            className="p-2.5 bg-green-600 text-white hover:bg-green-700 rounded-full transition-all shadow-md"
+                            title={t('common.approve')}
+                          >
+                            <Check size={16} />
+                          </button>
+                        </div>
+                      )}
+                      {apt.status === AppointmentStatus.PENDING && (
+                        <button
+                          onClick={() => handleCancel(apt.id)}
+                          className="p-2.5 bg-red-600 text-white hover:bg-red-700 rounded-full transition-all shadow-md"
+                          title={t('common.cancel')}
+                        >
+                          <XCircle size={16} />
+                        </button>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(apt.status)}`}>
-                      {getStatusLabel(apt.status)}
-                    </span>
-                    {apt.status === AppointmentStatus.PENDING && user?.role !== UserRole.PATIENT && (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleApprove(apt.id)}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                          title={t('common.approve')}
-                        >
-                          <Check size={18} />
-                        </button>
-                      </div>
-                    )}
-                    {apt.status === AppointmentStatus.PENDING && (
-                      <button
-                        onClick={() => handleCancel(apt.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title={t('common.cancel')}
-                      >
-                        <XCircle size={18} />
-                      </button>
-                    )}
-                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Create Appointment Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-midnight-900">{t('appointments.new')}</h2>
-              <button
-                onClick={() => setShowModal(false)}
-                className="p-2 text-midnight-400 hover:text-midnight-600 rounded-lg"
-              >
-                <X size={20} />
-              </button>
+              ))}
             </div>
-            <form onSubmit={handleCreateAppointment} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-midnight-700 mb-1">
-                  {t('appointments.selectDoctor')}
-                </label>
-                <select
-                  value={selectedDoctor}
-                  onChange={(e) => setSelectedDoctor(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                  required
-                >
-                  <option value="">{t('appointments.selectDoctor')}</option>
-                  {doctorsList.map((doc) => (
-                    <option key={doc.id} value={doc.id}>
-                      Dr. {doc.user.firstName} {doc.user.lastName} - {doc.specialty}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-midnight-700 mb-1">
-                  {t('appointments.date')}
-                </label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-midnight-700 mb-1">
-                  {t('appointments.time')}
-                </label>
-                <input
-                  type="time"
-                  value={selectedTime}
-                  onChange={(e) => setSelectedTime(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-midnight-700 mb-1">
-                  {t('appointments.reason')}
-                </label>
-                <textarea
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  rows={3}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full py-3 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors font-medium"
-              >
-                {t('appointments.book')}
-              </button>
-            </form>
-          </div>
+          )}
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "MedApp",
+    "appName": "Tabibi",
     "loading": "Chargement...",
     "save": "Enregistrer",
     "saving": "Enregistrement...",
@@ -58,7 +58,9 @@
     "easyScheduling": "Planification facile",
     "bookInSeconds": "Prenez rendez-vous en quelques secondes",
     "secureRecords": "Dossiers sécurisés",
-    "dataProtected": "Vos données sont protégées"
+    "dataProtected": "Vos données sont protégées",
+    "qualityCare": "Soins de qualité",
+    "bestDoctors": "Accédez aux meilleurs médecins"
   },
   "nav": {
     "dashboard": "Tableau de bord",
@@ -68,6 +70,7 @@
     "availability": "Mes disponibilités",
     "patientFolder": "Dossier patient",
     "doctors": "Médecins",
+    "assistants": "Mes assistants",
     "admin": "Admin",
     "overview": "Aperçu",
     "patients": "Patients",
@@ -79,6 +82,7 @@
     "adminPanel": "Panneau d'administration",
     "doctorPortal": "Portail médecin",
     "patientPortal": "Portail patient",
+    "assistantPortal": "Portail assistant",
     "upcomingAppointments": "Rendez-vous à venir",
     "todaySchedule": "Planning du jour",
     "recentActivity": "Activité récente",
@@ -131,9 +135,42 @@
   },
   "availability": {
     "subtitle": "Définissez vos heures de travail",
-    "weeklySchedule": "Horaire hebdomadaire",
+    "subtitle6months": "Gérez vos disponibilités sur les 6 prochains mois",
+    "weeklySchedule": "Horaire hebdomadaire par défaut",
     "saved": "Horaire enregistré avec succès",
+    "daySaved": "Journée enregistrée",
     "closed": "Fermé",
+    "defaultSchedule": "Horaire par défaut",
+    "defaultsDescription": "Ces horaires s'appliquent par défaut. Vous pouvez les personnaliser jour par jour sur le calendrier.",
+    "saveAll": "Tout enregistrer",
+    "reset": "Réinitialiser",
+    "confirmReset": "Voulez-vous vraiment réinitialiser toutes les personnalisations de dates?",
+    "resetDone": "Personnalisations réinitialisées",
+    "selectDatePrompt": "Sélectionnez une date",
+    "selectDateHint": "Cliquez sur une date du calendrier pour configurer vos disponibilités",
+    "configureSlots": "Configurez vos créneaux horaires",
+    "morning": "Matin",
+    "afternoon": "Après-midi",
+    "saveDay": "Enregistrer cette journée",
+    "quickActions": "Actions rapides",
+    "applyToWeek": "Appliquer à toute la semaine",
+    "applyToWeekDesc": "Copier ces horaires sur tous les jours de la semaine",
+    "weekApplied": "Horaires appliqués à la semaine",
+    "setDayOff": "Marquer journée OFF",
+    "setDayOffDesc": "Fermer complètement cette journée",
+    "dayOffSet": "Journée marquée comme fermée",
+    "setMorningOff": "Matin OFF",
+    "setMorningOffDesc": "Fermer uniquement le matin",
+    "morningOffSet": "Matin marqué comme fermé",
+    "setAfternoonOff": "Après-midi OFF",
+    "setAfternoonOffDesc": "Fermer uniquement l'après-midi",
+    "afternoonOffSet": "Après-midi marqué comme fermé",
+    "legend": {
+      "full": "Journée complète",
+      "partial": "Demi-journée",
+      "off": "Fermé",
+      "default": "Horaire par défaut"
+    },
     "days": {
       "monday": "Lundi",
       "tuesday": "Mardi",
@@ -238,5 +275,39 @@
     "french": "Français",
     "arabic": "العربية",
     "english": "English"
+  },
+  "view": {
+    "list": "Liste",
+    "box": "Cartes"
+  },
+  "assistants": {
+    "title": "Mes assistants",
+    "subtitle": "Gérer vos assistants médicaux",
+    "add": "Ajouter un assistant",
+    "addFirst": "Ajouter votre premier assistant",
+    "edit": "Modifier l'assistant",
+    "noAssistants": "Vous n'avez pas encore d'assistant",
+    "created": "Assistant créé avec succès",
+    "updated": "Assistant mis à jour avec succès",
+    "removed": "Assistant retiré avec succès",
+    "confirmRemove": "Êtes-vous sûr de vouloir retirer cet assistant?",
+    "jobTitle": "Fonction",
+    "jobTitlePlaceholder": "Ex: Secrétaire médicale, Infirmière..."
+  },
+  "calendar": {
+    "title": "Prendre rendez-vous",
+    "selectDoctor": "Choisir un médecin",
+    "selectDate": "Choisir une date",
+    "selectTime": "Choisir un créneau",
+    "selectDatePrompt": "Sélectionnez une date disponible pour voir les créneaux horaires",
+    "morning": "Matin",
+    "afternoon": "Après-midi",
+    "noSlots": "Aucun créneau disponible",
+    "booked": "Déjà réservé",
+    "selected": "Sélectionné",
+    "confirmBooking": "Confirmer le rendez-vous",
+    "bookingSuccess": "Rendez-vous réservé avec succès",
+    "newAppointment": "Nouveau RDV",
+    "myAppointments": "Mes rendez-vous"
   }
 }

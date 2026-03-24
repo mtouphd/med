@@ -5,6 +5,7 @@ import { Appointment } from '../../appointments/entities/appointment.entity';
 export enum UserRole {
   PATIENT = 'PATIENT',
   DOCTOR = 'DOCTOR',
+  ASSISTANT = 'ASSISTANT',
   ADMIN = 'ADMIN',
 }
 

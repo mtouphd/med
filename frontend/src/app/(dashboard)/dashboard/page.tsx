@@ -57,26 +57,26 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-midnight-900 mb-2">{t('nav.dashboard')}</h1>
-      <p className="text-midnight-600 mb-8">{t('dashboard.welcome')}, {user?.firstName} {user?.lastName}!</p>
+      <h1 className="text-2xl font-bold text-primary-800 mb-2">{t('nav.dashboard')}</h1>
+      <p className="text-primary-600 mb-8">{t('dashboard.welcome')}, {user?.firstName} {user?.lastName}!</p>
 
       {user?.role === UserRole.ADMIN && stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+          <div className="bg-white p-6 rounded-xl shadow-soft border border-primary-100">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-midnight-600">{t('appointments.title')}</p>
-                <p className="text-3xl font-bold text-midnight-900">{stats.total}</p>
+                <p className="text-sm text-primary-600">{t('appointments.title')}</p>
+                <p className="text-3xl font-bold text-primary-800">{stats.total}</p>
               </div>
               <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
                 <Calendar className="text-primary-600" size={24} />
               </div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+          <div className="bg-white p-6 rounded-xl shadow-soft border border-primary-100">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-midnight-600">{t('appointments.status.pending')}</p>
+                <p className="text-sm text-primary-600">{t('appointments.status.pending')}</p>
                 <p className="text-3xl font-bold text-yellow-600">{stats.pending}</p>
               </div>
               <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
@@ -84,10 +84,10 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+          <div className="bg-white p-6 rounded-xl shadow-soft border border-primary-100">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-midnight-600">{t('appointments.status.confirmed')}</p>
+                <p className="text-sm text-primary-600">{t('appointments.status.confirmed')}</p>
                 <p className="text-3xl font-bold text-green-600">{stats.confirmed}</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -95,14 +95,14 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+          <div className="bg-white p-6 rounded-xl shadow-soft border border-primary-100">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-midnight-600">{t('appointments.status.completed')}</p>
-                <p className="text-3xl font-bold text-blue-600">{stats.completed}</p>
+                <p className="text-sm text-primary-600">{t('appointments.status.completed')}</p>
+                <p className="text-3xl font-bold text-primary-600">{stats.completed}</p>
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <CheckCircle className="text-blue-600" size={24} />
+              <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
+                <CheckCircle className="text-primary-600" size={24} />
               </div>
             </div>
           </div>
@@ -110,21 +110,21 @@ export default function DashboardPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-          <h2 className="text-lg font-semibold text-midnight-900 mb-4">{t('dashboard.upcomingAppointments')}</h2>
+        <div className="bg-white p-6 rounded-xl shadow-soft border border-primary-100">
+          <h2 className="text-lg font-semibold text-primary-800 mb-4">{t('dashboard.upcomingAppointments')}</h2>
           <div className="space-y-4">
             {appointmentsList.length === 0 ? (
-              <p className="text-midnight-600 text-center py-4">{t('common.noData')}</p>
+              <p className="text-primary-500 text-center py-4">{t('common.noData')}</p>
             ) : (
               appointmentsList.slice(0, 5).map((apt) => (
-                <div key={apt.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                <div key={apt.id} className="flex items-center justify-between p-4 bg-primary-50/50 rounded-lg border border-primary-100">
                   <div>
-                    <p className="font-medium text-midnight-900">
+                    <p className="font-medium text-primary-800">
                       {user?.role === UserRole.PATIENT
                         ? `Dr. ${apt.doctor.user.firstName} ${apt.doctor.user.lastName}`
                         : `${apt.patient.user.firstName} ${apt.patient.user.lastName}`}
                     </p>
-                    <p className="text-sm text-midnight-600">
+                    <p className="text-sm text-primary-600">
                       {new Date(apt.dateTime).toLocaleDateString()} - {new Date(apt.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
@@ -138,21 +138,21 @@ export default function DashboardPage() {
         </div>
 
         {user?.role !== UserRole.PATIENT && (
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-            <h2 className="text-lg font-semibold text-midnight-900 mb-4">{t('doctors.title')}</h2>
+          <div className="bg-white p-6 rounded-xl shadow-soft border border-primary-100">
+            <h2 className="text-lg font-semibold text-primary-800 mb-4">{t('doctors.title')}</h2>
             <div className="space-y-4">
               {doctorsList.length === 0 ? (
-                <p className="text-midnight-600 text-center py-4">{t('common.noData')}</p>
+                <p className="text-primary-500 text-center py-4">{t('common.noData')}</p>
               ) : (
                 doctorsList.slice(0, 5).map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                  <div key={doc.id} className="flex items-center justify-between p-4 bg-primary-50/50 rounded-lg border border-primary-100">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-                        <span className="text-primary-600 font-semibold">{doc.user.firstName[0]}{doc.user.lastName[0]}</span>
+                      <div className="w-10 h-10 bg-gradient-to-br from-primary-400 to-primary-500 rounded-full flex items-center justify-center shadow-blue">
+                        <span className="text-white font-semibold">{doc.user.firstName[0]}{doc.user.lastName[0]}</span>
                       </div>
                       <div>
-                        <p className="font-medium text-midnight-900">Dr. {doc.user.firstName} {doc.user.lastName}</p>
-                        <p className="text-sm text-midnight-600">{doc.specialty}</p>
+                        <p className="font-medium text-primary-800">Dr. {doc.user.firstName} {doc.user.lastName}</p>
+                        <p className="text-sm text-primary-600">{doc.specialty}</p>
                       </div>
                     </div>
                   </div>

@@ -31,7 +31,7 @@ export default function LanguageSwitcher() {
     <div className="fixed bottom-6 end-6 z-50" ref={menuRef}>
       <div className="relative">
         {isOpen && (
-          <div className="absolute bottom-full end-0 mb-3 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden min-w-[160px] animate-fade-in">
+          <div className="absolute bottom-full end-0 mb-3 bg-white rounded-2xl shadow-dialog border border-primary-100 overflow-hidden min-w-[160px] animate-fade-in">
             <div className="p-2">
               {locales.map((loc) => (
                 <button
@@ -39,8 +39,8 @@ export default function LanguageSwitcher() {
                   onClick={() => switchLanguage(loc)}
                   className={`w-full px-4 py-3 text-sm text-start rounded-xl transition-all ${
                     locale === loc
-                      ? 'bg-primary-50 text-primary-600 font-medium'
-                      : 'text-midnight-700 hover:bg-slate-50'
+                      ? 'bg-primary-100 text-primary-700 font-medium'
+                      : 'text-primary-600 hover:bg-primary-50'
                   }`}
                 >
                   {localeNames[loc]}
@@ -52,10 +52,10 @@ export default function LanguageSwitcher() {
 
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className={`flex items-center gap-2 px-5 py-3 rounded-full shadow-lg transition-all ${
+          className={`flex items-center gap-2 px-5 py-3 rounded-full shadow-blue transition-all ${
             isOpen
-              ? 'bg-primary-500 text-white shadow-primary-500/30'
-              : 'bg-white text-midnight-700 hover:bg-slate-50 shadow-slate-200/50'
+              ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-blue-lg'
+              : 'bg-white text-primary-600 hover:bg-primary-50 border border-primary-100'
           }`}
         >
           <Globe size={20} strokeWidth={1.5} />

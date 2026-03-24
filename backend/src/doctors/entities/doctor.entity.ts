@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToOne, OneToMany, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, OneToOne, OneToMany, ManyToMany, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { Assistant } from '../../assistants/entities/assistant.entity';
 
 @Entity('doctors')
 export class Doctor {
@@ -46,6 +47,9 @@ export class Doctor {
 
   @OneToMany('Appointment', 'doctor')
   appointments: any[]; // Type will be Appointment[]
+
+  @ManyToMany(() => Assistant, (assistant) => assistant.doctors)
+  assistants: Assistant[];
 
   @CreateDateColumn()
   createdAt: Date;

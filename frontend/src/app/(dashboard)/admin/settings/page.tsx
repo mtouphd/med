@@ -70,7 +70,7 @@ export default function AdminSettingsPage() {
               <button
                 onClick={() => handleSave(setting.key)}
                 disabled={saving === setting.key}
-                className="p-1.5 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:opacity-50"
+                className="p-2 bg-primary-700 text-white rounded-full hover:bg-primary-800 disabled:opacity-50 shadow-md"
               >
                 <Save size={14} />
               </button>
@@ -90,7 +90,7 @@ export default function AdminSettingsPage() {
               <button
                 onClick={() => handleSave(setting.key)}
                 disabled={saving === setting.key}
-                className="p-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:opacity-50"
+                className="p-2 bg-primary-700 text-white rounded-full hover:bg-primary-800 disabled:opacity-50 shadow-md"
               >
                 <Save size={16} />
               </button>
@@ -110,7 +110,7 @@ export default function AdminSettingsPage() {
               <button
                 onClick={() => handleSave(setting.key)}
                 disabled={saving === setting.key}
-                className="p-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:opacity-50"
+                className="p-2 bg-primary-700 text-white rounded-full hover:bg-primary-800 disabled:opacity-50 shadow-md"
               >
                 <Save size={16} />
               </button>

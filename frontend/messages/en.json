@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "MedApp",
+    "appName": "Tabibi",
     "loading": "Loading...",
     "save": "Save",
     "saving": "Saving...",
@@ -58,7 +58,9 @@
     "easyScheduling": "Easy Scheduling",
     "bookInSeconds": "Book appointments in seconds",
     "secureRecords": "Secure Records",
-    "dataProtected": "Your data is protected"
+    "dataProtected": "Your data is protected",
+    "qualityCare": "Quality Care",
+    "bestDoctors": "Access the best doctors"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -68,6 +70,7 @@
     "availability": "My Availability",
     "patientFolder": "Patient Folder",
     "doctors": "Doctors",
+    "assistants": "My Assistants",
     "admin": "Admin",
     "overview": "Overview",
     "patients": "Patients",
@@ -79,6 +82,7 @@
     "adminPanel": "Admin Panel",
     "doctorPortal": "Doctor Portal",
     "patientPortal": "Patient Portal",
+    "assistantPortal": "Assistant Portal",
     "upcomingAppointments": "Upcoming Appointments",
     "todaySchedule": "Today's Schedule",
     "recentActivity": "Recent Activity",
@@ -131,9 +135,42 @@
   },
   "availability": {
     "subtitle": "Set your working hours",
-    "weeklySchedule": "Weekly Schedule",
+    "subtitle6months": "Manage your availability for the next 6 months",
+    "weeklySchedule": "Default weekly schedule",
     "saved": "Schedule saved successfully",
+    "daySaved": "Day saved",
     "closed": "Closed",
+    "defaultSchedule": "Default schedule",
+    "defaultsDescription": "These hours apply by default. You can customize them day by day on the calendar.",
+    "saveAll": "Save all",
+    "reset": "Reset",
+    "confirmReset": "Are you sure you want to reset all date customizations?",
+    "resetDone": "Customizations reset",
+    "selectDatePrompt": "Select a date",
+    "selectDateHint": "Click on a calendar date to configure your availability",
+    "configureSlots": "Configure your time slots",
+    "morning": "Morning",
+    "afternoon": "Afternoon",
+    "saveDay": "Save this day",
+    "quickActions": "Quick actions",
+    "applyToWeek": "Apply to entire week",
+    "applyToWeekDesc": "Copy these hours to all days of the week",
+    "weekApplied": "Hours applied to the week",
+    "setDayOff": "Mark day as OFF",
+    "setDayOffDesc": "Close this day completely",
+    "dayOffSet": "Day marked as closed",
+    "setMorningOff": "Morning OFF",
+    "setMorningOffDesc": "Close morning only",
+    "morningOffSet": "Morning marked as closed",
+    "setAfternoonOff": "Afternoon OFF",
+    "setAfternoonOffDesc": "Close afternoon only",
+    "afternoonOffSet": "Afternoon marked as closed",
+    "legend": {
+      "full": "Full day",
+      "partial": "Half day",
+      "off": "Closed",
+      "default": "Default schedule"
+    },
     "days": {
       "monday": "Monday",
       "tuesday": "Tuesday",
@@ -238,5 +275,39 @@
     "french": "Français",
     "arabic": "العربية",
     "english": "English"
+  },
+  "view": {
+    "list": "List",
+    "box": "Cards"
+  },
+  "assistants": {
+    "title": "My Assistants",
+    "subtitle": "Manage your medical assistants",
+    "add": "Add Assistant",
+    "addFirst": "Add your first assistant",
+    "edit": "Edit Assistant",
+    "noAssistants": "You don't have any assistants yet",
+    "created": "Assistant created successfully",
+    "updated": "Assistant updated successfully",
+    "removed": "Assistant removed successfully",
+    "confirmRemove": "Are you sure you want to remove this assistant?",
+    "jobTitle": "Job Title",
+    "jobTitlePlaceholder": "e.g., Medical Secretary, Nurse..."
+  },
+  "calendar": {
+    "title": "Book an appointment",
+    "selectDoctor": "Select a doctor",
+    "selectDate": "Select a date",
+    "selectTime": "Select a time slot",
+    "selectDatePrompt": "Select an available date to see time slots",
+    "morning": "Morning",
+    "afternoon": "Afternoon",
+    "noSlots": "No slots available",
+    "booked": "Already booked",
+    "selected": "Selected",
+    "confirmBooking": "Confirm booking",
+    "bookingSuccess": "Appointment booked successfully",
+    "newAppointment": "New Appointment",
+    "myAppointments": "My Appointments"
   }
 }

@@ -12,6 +12,7 @@ import { UserRole } from '../users/entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Doctor } from './entities/doctor.entity';
+import { Assistant } from '../assistants/entities/assistant.entity';
 
 @Controller('doctors')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -23,6 +24,8 @@ export class DoctorsController {
     private usersService: UsersService,
     @InjectRepository(Doctor)
     private doctorsRepository: Repository<Doctor>,
+    @InjectRepository(Assistant)
+    private assistantsRepository: Repository<Assistant>,
   ) {}
 
   @Get()
@@ -173,5 +176,140 @@ export class DoctorsController {
       pendingAppointments: pendingAppointments.length,
       canAcceptNewPatients: !doctor.maxFamilyPatients || familyPatients.length < doctor.maxFamilyPatients,
     };
+  }
+
+  // ==================== GESTION DES ASSISTANTS ====================
+
+  /**
+   * GET /doctors/me/assistants
+   * Get assistants for the current logged-in doctor
+   */
+  @Get('me/assistants')
+  @Roles(UserRole.DOCTOR)
+  async getMyAssistants(@Request() req) {
+    const doctor = await this.doctorsRepository.findOne({
+      where: { userId: req.user.id },
+      relations: ['assistants', 'assistants.user'],
+    });
+
+    if (!doctor) {
+      return [];
+    }
+
+    return doctor.assistants || [];
+  }
+
+  /**
+   * POST /doctors/me/assistants
+   * Create and assign a new assistant to current doctor
+   */
+  @Post('me/assistants')
+  @Roles(UserRole.DOCTOR)
+  async createMyAssistant(@Request() req, @Body() body: any) {
+    const doctor = await this.doctorsRepository.findOne({
+      where: { userId: req.user.id },
+    });
+
+    if (!doctor) {
+      throw new Error('Doctor not found');
+    }
+
+    // Create user with ASSISTANT role
+    const user = await this.usersService.create({
+      ...body.user,
+      role: UserRole.ASSISTANT,
+    });
+
+    // Create assistant
+    const assistant = this.assistantsRepository.create({
+      userId: user.id,
+      title: body.title,
+      bio: body.bio,
+      doctors: [doctor],
+    });
+
+    return this.assistantsRepository.save(assistant);
+  }
+
+  /**
+   * GET /doctors/:id/assistants
+   * Get all assistants for a doctor
+   */
+  @Get(':id/assistants')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR)
+  async getDoctorAssistants(@Param('id') doctorId: string) {
+    const doctor = await this.doctorsRepository.findOne({
+      where: { id: doctorId },
+      relations: ['assistants', 'assistants.user'],
+    });
+
+    if (!doctor) {
+      return [];
+    }
+
+    return doctor.assistants || [];
+  }
+
+  /**
+   * POST /doctors/:id/assistants
+   * Assign an existing assistant to a doctor
+   */
+  @Post(':id/assistants')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR)
+  async assignAssistant(@Param('id') doctorId: string, @Body('assistantId') assistantId: string) {
+    const doctor = await this.doctorsRepository.findOne({
+      where: { id: doctorId },
+      relations: ['assistants'],
+    });
+
+    if (!doctor) {
+      throw new Error('Doctor not found');
+    }
+
+    const assistant = await this.assistantsRepository.findOne({
+      where: { id: assistantId },
+      relations: ['doctors'],
+    });
+
+    if (!assistant) {
+      throw new Error('Assistant not found');
+    }
+
+    // Check if already assigned
+    const alreadyAssigned = doctor.assistants?.some((a) => a.id === assistantId);
+    if (!alreadyAssigned) {
+      assistant.doctors = [...(assistant.doctors || []), doctor];
+      await this.assistantsRepository.save(assistant);
+    }
+
+    return this.doctorsRepository.findOne({
+      where: { id: doctorId },
+      relations: ['assistants', 'assistants.user'],
+    });
+  }
+
+  /**
+   * DELETE /doctors/:id/assistants/:assistantId
+   * Remove an assistant from a doctor
+   */
+  @Delete(':id/assistants/:assistantId')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR)
+  async removeAssistant(
+    @Param('id') doctorId: string,
+    @Param('assistantId') assistantId: string,
+  ) {
+    const assistant = await this.assistantsRepository.findOne({
+      where: { id: assistantId },
+      relations: ['doctors'],
+    });
+
+    if (!assistant) {
+      throw new Error('Assistant not found');
+    }
+
+    assistant.doctors = assistant.doctors.filter((d) => d.id !== doctorId);
+    await this.assistantsRepository.save(assistant);
+
+    return { message: 'Assistant removed successfully' };
   }
 }

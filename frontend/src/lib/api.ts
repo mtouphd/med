@@ -13,6 +13,7 @@ import {
   Medication,
   Vaccination,
   FamilyDoctorRequest,
+  Assistant,
 } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -49,6 +50,15 @@ export const doctors = {
   delete: (id: string) => api.delete(`/doctors/${id}`),
   updateSchedule: (id: string, schedule: any) =>
     api.put(`/doctors/${id}/schedule`, { schedule }),
+  // Extended availability (6 months)
+  getExtendedSchedule: (id: string) =>
+    api.get(`/doctors/${id}/extended-schedule`),
+  updateExtendedSchedule: (id: string, data: { baseSchedule?: any; specificDays?: any }) =>
+    api.put(`/doctors/${id}/extended-schedule`, data),
+  updateDayAvailability: (id: string, date: string, availability: any) =>
+    api.put(`/doctors/${id}/availability/${date}`, availability),
+  deleteDayAvailability: (id: string, date: string) =>
+    api.delete(`/doctors/${id}/availability/${date}`),
   // Family patients
   getFamilyPatients: (doctorId: string) => api.get(`/doctors/${doctorId}/family-patients`),
   getMyFamilyPatients: () => api.get('/doctors/me/family-patients'),
@@ -58,6 +68,14 @@ export const doctors = {
   // Pending appointments
   getPendingAppointments: (doctorId: string) => api.get(`/doctors/${doctorId}/pending-appointments`),
   getMyPendingAppointments: () => api.get('/doctors/me/pending-appointments'),
+  // Assistants
+  getAssistants: (doctorId: string) => api.get<Assistant[]>(`/doctors/${doctorId}/assistants`),
+  getMyAssistants: () => api.get<Assistant[]>('/doctors/me/assistants'),
+  createAssistant: (data: any) => api.post<Assistant>('/doctors/me/assistants', data),
+  assignAssistant: (doctorId: string, assistantId: string) =>
+    api.post(`/doctors/${doctorId}/assistants`, { assistantId }),
+  removeAssistant: (doctorId: string, assistantId: string) =>
+    api.delete(`/doctors/${doctorId}/assistants/${assistantId}`),
 };
 
 export const appointments = {
@@ -195,6 +213,24 @@ export const systemSettings = {
   getAll: () => api.get<SystemSetting[]>('/system-settings'),
   update: (key: string, value: string) =>
     api.patch<SystemSetting>(`/system-settings/${key}`, { value }),
+};
+
+// Assistants API
+export const assistants = {
+  getAll: () => api.get<Assistant[]>('/assistants'),
+  getById: (id: string) => api.get<Assistant>(`/assistants/${id}`),
+  create: (data: any) => api.post<Assistant>('/assistants', data),
+  update: (id: string, data: any) => api.put<Assistant>(`/assistants/${id}`, data),
+  delete: (id: string) => api.delete(`/assistants/${id}`),
+  // Current assistant
+  getMyProfile: () => api.get<Assistant>('/assistants/me'),
+  getMyDoctors: () => api.get<Doctor[]>('/assistants/me/doctors'),
+  // Doctor assignments
+  getDoctors: (assistantId: string) => api.get<Doctor[]>(`/assistants/${assistantId}/doctors`),
+  assignToDoctor: (assistantId: string, doctorId: string) =>
+    api.post(`/assistants/${assistantId}/doctors`, { doctorId }),
+  removeFromDoctor: (assistantId: string, doctorId: string) =>
+    api.delete(`/assistants/${assistantId}/doctors/${doctorId}`),
 };
 
 export default api;

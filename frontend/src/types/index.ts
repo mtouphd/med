@@ -1,6 +1,7 @@
 export enum UserRole {
   PATIENT = 'PATIENT',
   DOCTOR = 'DOCTOR',
+  ASSISTANT = 'ASSISTANT',
   ADMIN = 'ADMIN',
 }
 
@@ -33,6 +34,7 @@ export interface Doctor {
   schedule?: {
     [key: string]: { start: string; end: string; enabled: boolean };
   };
+  assistants?: Assistant[];
 }
 
 export interface Patient {
@@ -45,6 +47,18 @@ export interface Patient {
   familyDoctorId?: string;
   familyDoctor?: Doctor;
   familyDoctorAssignedAt?: Date;
+}
+
+export interface Assistant {
+  id: string;
+  userId: string;
+  user: User;
+  title?: string;
+  bio?: string;
+  isActive: boolean;
+  doctors?: Doctor[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export enum AppointmentStatus {
@@ -90,6 +104,24 @@ export interface DashboardStats {
 export interface AvailabilityCheck {
   available: boolean;
   reason?: string;
+}
+
+// Extended availability types for 6-month calendar
+export interface DaySlot {
+  start: string;
+  end: string;
+  enabled: boolean;
+}
+
+export interface DayAvailability {
+  date: string; // YYYY-MM-DD
+  morning: DaySlot;
+  afternoon: DaySlot;
+}
+
+export interface ExtendedSchedule {
+  baseSchedule: Record<string, DaySlot>; // Weekly defaults
+  specificDays: Record<string, DayAvailability>; // Specific date overrides
 }
 
 export interface DoctorPatient {

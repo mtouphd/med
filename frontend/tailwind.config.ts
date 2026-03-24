@@ -8,6 +8,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['var(--font-nunito)', 'Nunito', 'system-ui', 'sans-serif'],
+        logo: ['var(--font-logo)', 'Amatic SC', 'cursive'],
+      },
       colors: {
         primary: {
           50: '#f0f9ff',
@@ -20,6 +24,7 @@ const config: Config = {
           700: '#0369a1',
           800: '#075985',
           900: '#0c4a6e',
+          950: '#082f49',
         },
         midnight: {
           50: '#f0f4ff',
@@ -63,6 +68,9 @@ const config: Config = {
       boxShadow: {
         'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
         'soft-lg': '0 10px 40px -10px rgba(0, 0, 0, 0.1), 0 2px 10px -2px rgba(0, 0, 0, 0.04)',
+        'dialog': '0 25px 50px -12px rgba(7, 89, 133, 0.35), 0 12px 24px -8px rgba(7, 89, 133, 0.2)',
+        'blue': '0 10px 40px -10px rgba(2, 132, 199, 0.4)',
+        'blue-lg': '0 20px 60px -15px rgba(2, 132, 199, 0.5)',
       },
       borderWidth: {
         '3': '3px',
@@ -70,6 +78,7 @@ const config: Config = {
       animation: {
         'fade-in': 'fadeIn 0.5s ease-out',
         'slide-up': 'slideUp 0.5s ease-out',
+        'slide-in': 'slideIn 0.3s ease-out',
       },
       keyframes: {
         fadeIn: {
@@ -79,6 +88,10 @@ const config: Config = {
         slideUp: {
           '0%': { opacity: '0', transform: 'translateY(10px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        slideIn: {
+          '0%': { opacity: '0', transform: 'translateX(-10px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
         },
       },
     },

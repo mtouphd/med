@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react';
 import { useLanguage } from '@/lib/language-context';
 import { doctors, familyDoctorRequests, appointments } from '@/lib/api';
 import { Doctor } from '@/types';
-import { Stethoscope, MapPin, Clock, Heart, Calendar, X } from 'lucide-react';
+import { Stethoscope, X } from 'lucide-react';
+import { ViewToggle, DoctorCard, ViewMode } from '@/components/ui';
 
 export default function DoctorsPage() {
   const { t } = useLanguage();
   const [doctorsList, setDoctorsList] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>('box');
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [selectedDate, setSelectedDate] = useState('');
@@ -83,9 +85,12 @@ export default function DoctorsPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-midnight-900">{t('doctors.title')}</h1>
-        <p className="text-midnight-600">{t('doctors.subtitle')}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-midnight-900">{t('doctors.title')}</h1>
+          <p className="text-midnight-600">{t('doctors.subtitle')}</p>
+        </div>
+        <ViewToggle viewMode={viewMode} onViewChange={setViewMode} />
       </div>
 
       {doctorsList.length === 0 ? (
@@ -93,124 +98,90 @@ export default function DoctorsPage() {
           <Stethoscope className="w-12 h-12 text-midnight-300 mx-auto mb-3" />
           <p className="text-midnight-600">{t('common.noData')}</p>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      ) : viewMode === 'box' ? (
+        // Box view with 3D cards
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 stagger-animation">
           {doctorsList.map((doctor) => (
-            <div key={doctor.id} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow">
-              <div className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 bg-primary-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <span className="text-primary-600 font-semibold text-lg">
-                      {doctor.user?.firstName?.[0]}{doctor.user?.lastName?.[0]}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-midnight-900">
-                      Dr. {doctor.user?.firstName} {doctor.user?.lastName}
-                    </h3>
-                    <p className="text-primary-600 text-sm">{doctor.specialty}</p>
-                    {doctor.address && (
-                      <p className="text-midnight-500 text-sm flex items-center gap-1 mt-1">
-                        <MapPin size={14} />
-                        {doctor.address}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {doctor.bio && (
-                  <p className="text-midnight-600 text-sm mt-4 line-clamp-2">{doctor.bio}</p>
-                )}
-
-                <div className="flex items-center gap-4 mt-4 text-sm text-midnight-500">
-                  <span className="flex items-center gap-1">
-                    <Clock size={14} />
-                    {doctor.consultationDuration} min
-                  </span>
-                  <span className={`flex items-center gap-1 ${doctor.isAvailable ? 'text-green-600' : 'text-red-600'}`}>
-                    <span className={`w-2 h-2 rounded-full ${doctor.isAvailable ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                    {doctor.isAvailable ? t('doctors.available') : t('doctors.unavailable')}
-                  </span>
-                </div>
-              </div>
-
-              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-2">
-                <button
-                  onClick={() => openAppointmentModal(doctor)}
-                  disabled={!doctor.isAvailable}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                >
-                  <Calendar size={16} />
-                  {t('appointments.book')}
-                </button>
-                <button
-                  onClick={() => handleRequestFamilyDoctor(doctor.id)}
-                  disabled={requestingFamilyDoctor === doctor.id}
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 text-sm"
-                >
-                  <Heart size={16} />
-                  {t('doctors.requestFamily')}
-                </button>
-              </div>
-            </div>
+            <DoctorCard
+              key={doctor.id}
+              doctor={doctor}
+              viewMode={viewMode}
+              onBookAppointment={openAppointmentModal}
+              onRequestFamilyDoctor={handleRequestFamilyDoctor}
+              isRequesting={requestingFamilyDoctor === doctor.id}
+            />
+          ))}
+        </div>
+      ) : (
+        // List view
+        <div className="space-y-3 stagger-animation">
+          {doctorsList.map((doctor) => (
+            <DoctorCard
+              key={doctor.id}
+              doctor={doctor}
+              viewMode={viewMode}
+              onBookAppointment={openAppointmentModal}
+              onRequestFamilyDoctor={handleRequestFamilyDoctor}
+              isRequesting={requestingFamilyDoctor === doctor.id}
+            />
           ))}
         </div>
       )}
 
       {/* Appointment Modal */}
       {showAppointmentModal && selectedDoctor && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+        <div className="fixed inset-0 bg-primary-900/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-dialog w-full max-w-md mx-4 p-6 animate-slide-up">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-midnight-900">
+              <h2 className="text-xl font-semibold text-primary-800">
                 {t('appointments.bookWith')} Dr. {selectedDoctor.user?.firstName} {selectedDoctor.user?.lastName}
               </h2>
               <button
                 onClick={() => setShowAppointmentModal(false)}
-                className="p-2 text-midnight-400 hover:text-midnight-600 rounded-lg"
+                className="p-2 text-primary-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"
               >
                 <X size={20} />
               </button>
             </div>
             <form onSubmit={handleBookAppointment} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-midnight-700 mb-1">
+                <label className="block text-sm font-medium text-primary-700 mb-1">
                   {t('appointments.date')}
                 </label>
                 <input
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  className="w-full px-4 py-2.5 bg-primary-50/50 border border-primary-100 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-midnight-700 mb-1">
+                <label className="block text-sm font-medium text-primary-700 mb-1">
                   {t('appointments.time')}
                 </label>
                 <input
                   type="time"
                   value={selectedTime}
                   onChange={(e) => setSelectedTime(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  className="w-full px-4 py-2.5 bg-primary-50/50 border border-primary-100 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-midnight-700 mb-1">
+                <label className="block text-sm font-medium text-primary-700 mb-1">
                   {t('appointments.reason')}
                 </label>
                 <textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   rows={3}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  className="w-full px-4 py-2.5 bg-primary-50/50 border border-primary-100 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                 />
               </div>
               <button
                 type="submit"
-                className="w-full py-3 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors font-medium"
+                className="w-full py-3 bg-primary-700 text-white rounded-full hover:bg-primary-800 transition-all text-sm font-medium shadow-md hover:shadow-lg"
               >
                 {t('appointments.book')}
               </button>

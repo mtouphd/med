@@ -91,10 +91,10 @@ export default function FamilyDoctorRequestsPage() {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+            className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
               filter === f
-                ? 'bg-primary-500 text-white'
-                : 'bg-slate-100 text-midnight-600 hover:bg-slate-200'
+                ? 'bg-primary-700 text-white shadow-md'
+                : 'bg-white text-primary-700 border border-primary-200 hover:bg-primary-50'
             }`}
           >
             {f === 'all' ? t('common.all') : getStatusLabel(f.toUpperCase() as FamilyDoctorRequestStatus)}
@@ -158,17 +158,17 @@ export default function FamilyDoctorRequestsPage() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleApprove(request.id)}
-                          className="p-2 bg-green-100 text-green-600 hover:bg-green-200 rounded-lg transition-colors"
+                          className="p-2.5 bg-green-600 text-white hover:bg-green-700 rounded-full transition-all shadow-md"
                           title={t('common.approve')}
                         >
-                          <Check size={18} />
+                          <Check size={16} />
                         </button>
                         <button
                           onClick={() => handleReject(request.id)}
-                          className="p-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors"
+                          className="p-2.5 bg-red-600 text-white hover:bg-red-700 rounded-full transition-all shadow-md"
                           title={t('common.reject')}
                         >
-                          <X size={18} />
+                          <X size={16} />
                         </button>
                       </div>
                     )}

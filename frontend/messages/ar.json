@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "MedApp",
+    "appName": "طبيبي",
     "loading": "جاري التحميل...",
     "save": "حفظ",
     "saving": "جاري الحفظ...",
@@ -58,7 +58,9 @@
     "easyScheduling": "جدولة سهلة",
     "bookInSeconds": "احجز موعدك في ثوانٍ",
     "secureRecords": "سجلات آمنة",
-    "dataProtected": "بياناتك محمية"
+    "dataProtected": "بياناتك محمية",
+    "qualityCare": "رعاية عالية الجودة",
+    "bestDoctors": "احصل على أفضل الأطباء"
   },
   "nav": {
     "dashboard": "لوحة التحكم",
@@ -72,13 +74,15 @@
     "overview": "نظرة عامة",
     "patients": "المرضى",
     "doctorRequests": "طلبات الطبيب",
-    "settings": "الإعدادات"
+    "settings": "الإعدادات",
+    "assistants": "مساعديّ"
   },
   "dashboard": {
     "welcome": "مرحباً",
     "adminPanel": "لوحة الإدارة",
     "doctorPortal": "بوابة الطبيب",
     "patientPortal": "بوابة المريض",
+    "assistantPortal": "بوابة المساعد",
     "upcomingAppointments": "المواعيد القادمة",
     "todaySchedule": "جدول اليوم",
     "recentActivity": "النشاط الأخير",
@@ -131,9 +135,42 @@
   },
   "availability": {
     "subtitle": "حدد ساعات عملك",
-    "weeklySchedule": "الجدول الأسبوعي",
+    "subtitle6months": "إدارة توفرك للأشهر الستة القادمة",
+    "weeklySchedule": "الجدول الأسبوعي الافتراضي",
     "saved": "تم حفظ الجدول بنجاح",
+    "daySaved": "تم حفظ اليوم",
     "closed": "مغلق",
+    "defaultSchedule": "الجدول الافتراضي",
+    "defaultsDescription": "تنطبق هذه الأوقات افتراضياً. يمكنك تخصيصها يوماً بيوم على التقويم.",
+    "saveAll": "حفظ الكل",
+    "reset": "إعادة تعيين",
+    "confirmReset": "هل أنت متأكد من إعادة تعيين جميع تخصيصات التواريخ؟",
+    "resetDone": "تمت إعادة تعيين التخصيصات",
+    "selectDatePrompt": "اختر تاريخاً",
+    "selectDateHint": "انقر على تاريخ في التقويم لتكوين توفرك",
+    "configureSlots": "كوّن فتراتك الزمنية",
+    "morning": "صباحاً",
+    "afternoon": "مساءً",
+    "saveDay": "حفظ هذا اليوم",
+    "quickActions": "إجراءات سريعة",
+    "applyToWeek": "تطبيق على كل الأسبوع",
+    "applyToWeekDesc": "نسخ هذه الأوقات على جميع أيام الأسبوع",
+    "weekApplied": "تم تطبيق الأوقات على الأسبوع",
+    "setDayOff": "تعيين اليوم كعطلة",
+    "setDayOffDesc": "إغلاق هذا اليوم بالكامل",
+    "dayOffSet": "تم تعيين اليوم كمغلق",
+    "setMorningOff": "صباح عطلة",
+    "setMorningOffDesc": "إغلاق الصباح فقط",
+    "morningOffSet": "تم تعيين الصباح كمغلق",
+    "setAfternoonOff": "مساء عطلة",
+    "setAfternoonOffDesc": "إغلاق المساء فقط",
+    "afternoonOffSet": "تم تعيين المساء كمغلق",
+    "legend": {
+      "full": "يوم كامل",
+      "partial": "نصف يوم",
+      "off": "مغلق",
+      "default": "جدول افتراضي"
+    },
     "days": {
       "monday": "الاثنين",
       "tuesday": "الثلاثاء",
@@ -238,5 +275,39 @@
     "french": "Français",
     "arabic": "العربية",
     "english": "English"
+  },
+  "view": {
+    "list": "قائمة",
+    "box": "بطاقات"
+  },
+  "assistants": {
+    "title": "مساعديّ",
+    "subtitle": "إدارة المساعدين الطبيين",
+    "add": "إضافة مساعد",
+    "addFirst": "أضف مساعدك الأول",
+    "edit": "تعديل المساعد",
+    "noAssistants": "ليس لديك مساعدين بعد",
+    "created": "تم إنشاء المساعد بنجاح",
+    "updated": "تم تحديث المساعد بنجاح",
+    "removed": "تم إزالة المساعد بنجاح",
+    "confirmRemove": "هل أنت متأكد من إزالة هذا المساعد؟",
+    "jobTitle": "المسمى الوظيفي",
+    "jobTitlePlaceholder": "مثال: سكرتيرة طبية، ممرضة..."
+  },
+  "calendar": {
+    "title": "حجز موعد",
+    "selectDoctor": "اختر طبيباً",
+    "selectDate": "اختر تاريخاً",
+    "selectTime": "اختر وقتاً",
+    "selectDatePrompt": "اختر تاريخاً متاحاً لعرض المواعيد",
+    "morning": "صباحاً",
+    "afternoon": "مساءً",
+    "noSlots": "لا توجد مواعيد متاحة",
+    "booked": "محجوز مسبقاً",
+    "selected": "محدد",
+    "confirmBooking": "تأكيد الحجز",
+    "bookingSuccess": "تم حجز الموعد بنجاح",
+    "newAppointment": "موعد جديد",
+    "myAppointments": "مواعيدي"
   }
 }
