@@ -41,11 +41,12 @@ const navigationConfig: NavigationItem[] = [
   { nameKey: 'nav.dashboard', href: '/dashboard', roles: [UserRole.ADMIN, UserRole.DOCTOR, UserRole.PATIENT, UserRole.ASSISTANT], icon: LayoutDashboard },
   { nameKey: 'nav.appointments', href: '/appointments', roles: [UserRole.ADMIN, UserRole.DOCTOR, UserRole.PATIENT, UserRole.ASSISTANT], icon: Calendar },
   { nameKey: 'nav.consultations', href: '/consultations', roles: [UserRole.PATIENT, UserRole.DOCTOR], icon: FileText },
-  { nameKey: 'nav.requests', href: '/requests', roles: [UserRole.DOCTOR], icon: Inbox },
   { nameKey: 'nav.availability', href: '/availability', roles: [UserRole.DOCTOR], icon: CalendarDays },
   { nameKey: 'nav.patientFolder', href: '/patients', roles: [UserRole.DOCTOR], icon: FolderOpen },
   { nameKey: 'nav.assistants', href: '/assistants', roles: [UserRole.DOCTOR], icon: UserCheck },
+  { nameKey: 'nav.settings', href: '/settings', roles: [UserRole.DOCTOR], icon: Settings },
   { nameKey: 'nav.doctors', href: '/doctors', roles: [UserRole.PATIENT], icon: Stethoscope },
+  { nameKey: 'nav.myPatients', href: '/assistant-patients', roles: [UserRole.ASSISTANT], icon: Users },
   {
     nameKey: 'nav.admin', href: '/admin', roles: [UserRole.ADMIN], icon: Users,
     children: [

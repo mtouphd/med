@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Param,
   Body,
@@ -97,6 +98,30 @@ export class AssistantsController {
     return assistant.doctors;
   }
 
+  /**
+   * GET /assistants/me/patients
+   * Get patients accessible to the approved assistant
+   */
+  @Get('me/patients')
+  @Roles(UserRole.ASSISTANT)
+  async getMyPatients(@Request() req) {
+    return this.assistantsService.getPatientsForAssistant(req.user.id);
+  }
+
+  /**
+   * GET /assistants/pending/doctor
+   * Get pending affiliation requests for the connected doctor
+   */
+  @Get('pending/doctor')
+  @Roles(UserRole.DOCTOR)
+  async getPendingRequests(@Request() req) {
+    const doctor = await this.doctorsRepository.findOne({
+      where: { userId: req.user.id },
+    });
+    if (!doctor) return [];
+    return this.assistantsService.getPendingRequestsForDoctor(doctor.id);
+  }
+
   // ==================== :ID ROUTES ====================
 
   /**
@@ -157,5 +182,25 @@ export class AssistantsController {
   @Roles(UserRole.ADMIN, UserRole.DOCTOR)
   removeFromDoctor(@Param('id') id: string, @Param('doctorId') doctorId: string) {
     return this.assistantsService.removeFromDoctor(id, doctorId);
+  }
+
+  /**
+   * PATCH /assistants/:id/approve
+   * Doctor approves an assistant affiliation request
+   */
+  @Patch(':id/approve')
+  @Roles(UserRole.DOCTOR)
+  approveAffiliation(@Param('id') id: string) {
+    return this.assistantsService.approveAffiliation(id);
+  }
+
+  /**
+   * PATCH /assistants/:id/reject
+   * Doctor rejects an assistant affiliation request
+   */
+  @Patch(':id/reject')
+  @Roles(UserRole.DOCTOR)
+  rejectAffiliation(@Param('id') id: string) {
+    return this.assistantsService.rejectAffiliation(id);
   }
 }

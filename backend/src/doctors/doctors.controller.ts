@@ -1,7 +1,7 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Param, Body, UseGuards, Request, Query } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { DoctorsService } from './doctors.service';
-import { CreateDoctorDto, UpdateDoctorDto } from './dto/doctor.dto';
+import { DoctorsService, DoctorSearchParams } from './doctors.service';
+import { CreateDoctorDto, UpdateDoctorDto, UpdateDoctorSettingsDto } from './dto/doctor.dto';
 import { CreateDoctorWithUserDto } from './dto/create-doctor-with-user.dto';
 import { PatientsService } from '../patients/patients.service';
 import { AppointmentsService } from '../appointments/appointments.service';
@@ -50,7 +50,63 @@ export class DoctorsController {
     return this.doctorsService.create(createDoctorDto as CreateDoctorDto);
   }
 
+  // ==================== SEARCH ROUTE ====================
+
+  /**
+   * GET /doctors/search?city=...&specialty=...&lat=...&lng=...&radius=...
+   * Rechercher des médecins par zone géographique
+   */
+  @Get('search')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.PATIENT, UserRole.ASSISTANT)
+  searchDoctors(
+    @Query('city') city?: string,
+    @Query('specialty') specialty?: string,
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
+    @Query('radius') radius?: string,
+  ) {
+    const params: DoctorSearchParams = {
+      city,
+      specialty,
+      lat: lat ? parseFloat(lat) : undefined,
+      lng: lng ? parseFloat(lng) : undefined,
+      radius: radius ? parseFloat(radius) : undefined,
+    };
+    return this.doctorsService.searchDoctors(params);
+  }
+
   // ==================== ME ROUTES (must come before :id routes) ====================
+
+  /**
+   * GET /doctors/me
+   * Récupérer mon profil médecin (médecin connecté)
+   */
+  @Get('me')
+  @Roles(UserRole.DOCTOR)
+  async getMyProfile(@Request() req) {
+    const doctor = await this.doctorsRepository.findOne({
+      where: { userId: req.user.id },
+      relations: ['user'],
+    });
+    if (!doctor) {
+      return null;
+    }
+    return this.doctorsService.findOne(doctor.id);
+  }
+
+  /**
+   * GET /doctors/me/patients
+   * Tous les patients du médecin (famille + RDV)
+   */
+  @Get('me/patients')
+  @Roles(UserRole.DOCTOR)
+  async getMyPatients(@Request() req) {
+    const doctor = await this.doctorsRepository.findOne({
+      where: { userId: req.user.id },
+    });
+    if (!doctor) return [];
+    return this.patientsService.getPatientsByDoctor(doctor.id);
+  }
 
   /**
    * GET /doctors/me/family-patients
@@ -86,6 +142,36 @@ export class DoctorsController {
     }
 
     return this.appointmentsService.getDoctorPendingAppointments(doctor.id);
+  }
+
+  /**
+   * GET /doctors/me/settings
+   * Récupérer mes paramètres personnalisés + valeurs globales
+   */
+  @Get('me/settings')
+  @Roles(UserRole.DOCTOR)
+  async getMySettings(@Request() req) {
+    return this.doctorsService.getSettings(req.user.id);
+  }
+
+  /**
+   * PATCH /doctors/me
+   * Mettre à jour mon profil (bio, adresse structurée, spécialité…)
+   */
+  @Patch('me')
+  @Roles(UserRole.DOCTOR)
+  async updateMyProfile(@Request() req, @Body() dto: UpdateDoctorDto) {
+    return this.doctorsService.updateMyProfile(req.user.id, dto);
+  }
+
+  /**
+   * PATCH /doctors/me/settings
+   * Mettre à jour mes paramètres personnalisés (null = retour au global)
+   */
+  @Patch('me/settings')
+  @Roles(UserRole.DOCTOR)
+  async updateMySettings(@Request() req, @Body() dto: UpdateDoctorSettingsDto) {
+    return this.doctorsService.updateSettings(req.user.id, dto);
   }
 
   /**

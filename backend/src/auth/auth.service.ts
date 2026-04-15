@@ -7,6 +7,7 @@ import { User, UserRole } from '../users/entities/user.entity';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
 import { Doctor } from '../doctors/entities/doctor.entity';
 import { Patient } from '../patients/entities/patient.entity';
+import { Assistant, AffiliationStatus } from '../assistants/entities/assistant.entity';
 
 @Injectable()
 export class AuthService {
@@ -17,6 +18,8 @@ export class AuthService {
     private doctorsRepository: Repository<Doctor>,
     @InjectRepository(Patient)
     private patientsRepository: Repository<Patient>,
+    @InjectRepository(Assistant)
+    private assistantsRepository: Repository<Assistant>,
     private jwtService: JwtService,
   ) {}
 
@@ -50,6 +53,14 @@ export class AuthService {
         userId: savedUser.id,
       });
       await this.patientsRepository.save(patient);
+    } else if (registerDto.role === UserRole.ASSISTANT) {
+      const assistant = this.assistantsRepository.create({
+        userId: savedUser.id,
+        requestedDoctorId: registerDto.requestedDoctorId || null,
+        affiliationStatus: AffiliationStatus.PENDING,
+        doctors: [],
+      });
+      await this.assistantsRepository.save(assistant);
     }
 
     const token = this.generateToken(savedUser);

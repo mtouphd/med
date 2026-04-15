@@ -69,10 +69,10 @@ export default function DoctorCard({
             </h3>
             <p className="text-primary-600 font-medium text-sm mb-3">{doctor.specialty}</p>
 
-            {doctor.address && (
+            {(doctor.city || doctor.street) && (
               <p className="text-slate-500 text-xs flex items-center justify-center gap-1 mb-3">
                 <MapPin size={12} />
-                {doctor.address}
+                {[doctor.street, doctor.postalCode, doctor.city].filter(Boolean).join(', ')}
               </p>
             )}
 
@@ -153,10 +153,10 @@ export default function DoctorCard({
           </h3>
           <p className="text-primary-600 text-sm">{doctor.specialty}</p>
           <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
-            {doctor.address && (
+            {doctor.city && (
               <span className="flex items-center gap-1">
                 <MapPin size={12} />
-                <span className="truncate max-w-[150px]">{doctor.address}</span>
+                <span className="truncate max-w-[150px]">{[doctor.city, doctor.province].filter(Boolean).join(', ')}</span>
               </span>
             )}
             <span className="flex items-center gap-1">

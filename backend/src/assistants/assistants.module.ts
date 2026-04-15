@@ -6,10 +6,11 @@ import { AssistantsController } from './assistants.controller';
 import { DoctorsModule } from '../doctors/doctors.module';
 import { UsersModule } from '../users/users.module';
 import { Doctor } from '../doctors/entities/doctor.entity';
+import { Patient } from '../patients/entities/patient.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Assistant, Doctor]),
+    TypeOrmModule.forFeature([Assistant, Doctor, Patient]),
     forwardRef(() => DoctorsModule),
     UsersModule,
   ],

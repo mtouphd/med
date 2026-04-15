@@ -26,11 +26,13 @@
     "view": "View",
     "details": "Details",
     "noData": "No data available",
+    "from": "Since",
     "error": "An error occurred",
     "success": "Operation successful",
     "approve": "Approve",
     "reject": "Reject",
-    "all": "All"
+    "all": "All",
+    "page": "Page"
   },
   "auth": {
     "welcomeBack": "Welcome back",
@@ -46,6 +48,9 @@
     "patient": "Patient",
     "doctor": "Doctor",
     "admin": "Administrator",
+    "assistant": "Medical Assistant",
+    "selectDoctor": "Affiliated Doctor",
+    "chooseDoctorPlaceholder": "-- Choose a doctor --",
     "signInToAccount": "Sign in to your account",
     "startManagingHealth": "Start managing your health",
     "dontHaveAccount": "Don't have an account?",
@@ -71,6 +76,8 @@
     "patientFolder": "Patient Folder",
     "doctors": "Doctors",
     "assistants": "My Assistants",
+    "assistantRequests": "Assistant Requests",
+    "myPatients": "My Patients",
     "admin": "Admin",
     "overview": "Overview",
     "patients": "Patients",
@@ -119,7 +126,16 @@
     },
     "approve": "Approve",
     "reject": "Reject",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "rejectionReason": "Rejection reason",
+    "cancellationReason": "Cancellation reason",
+    "cancelTitle": "Cancel appointment",
+    "cancelReasonPrompt": "Please provide the reason for cancellation. The patient will be notified.",
+    "cancelReasonPlaceholder": "E.g. Unavailability, emergency...",
+    "confirmCancel": "Confirm cancellation",
+    "selectPatient": "Select a patient",
+    "selectPatientPlaceholder": "-- Choose a patient --",
+    "selectPatientFirst": "Please select a patient first"
   },
   "consultations": {
     "subtitle": "View your past consultations",
@@ -203,6 +219,9 @@
     "title": "Patients",
     "subtitle": "Manage your patients",
     "myPatients": "My Patients",
+    "tabFolder": "Folders",
+    "tabAppointments": "Appointments",
+    "tabFamilyDoctor": "Family Doctor",
     "selectPatient": "Select a patient to view details",
     "medicalSummary": "Medical Summary",
     "patientList": "Patient List",
@@ -219,7 +238,20 @@
     "emergencyContact": "Emergency Contact",
     "phone": "Phone",
     "familyDoctor": "Family Doctor",
-    "noFamilyDoctor": "No family doctor"
+    "noFamilyDoctor": "No family doctor",
+    "searchPlaceholder": "Search by name...",
+    "dob": "Date of birth",
+    "emergencyContact": "Emergency contact",
+    "familyDoctorRequest": "Family doctor request"
+  },
+  "patientDetail": {
+    "tabInfo": "Information",
+    "tabMedical": "Medical record",
+    "tabAppointments": "Appointments",
+    "tabConsultations": "Consultations",
+    "tabRequests": "Requests",
+    "upcoming": "Upcoming",
+    "past": "Past"
   },
   "medicalRecord": {
     "title": "Medical Record",
@@ -243,7 +275,10 @@
     "frequency": "Frequency",
     "prescribedBy": "Prescribed by",
     "startDate": "Start Date",
-    "endDate": "End Date"
+    "endDate": "End Date",
+    "height": "Height",
+    "weight": "Weight",
+    "organDonor": "Organ donor"
   },
   "admin": {
     "title": "Administration",
@@ -292,7 +327,24 @@
     "removed": "Assistant removed successfully",
     "confirmRemove": "Are you sure you want to remove this assistant?",
     "jobTitle": "Job Title",
-    "jobTitlePlaceholder": "e.g., Medical Secretary, Nurse..."
+    "jobTitlePlaceholder": "e.g., Medical Secretary, Nurse...",
+    "tabRoster": "Roster",
+    "tabRequests": "Requests"
+  },
+  "assistantRequests": {
+    "title": "Affiliation Requests",
+    "subtitle": "Medical assistants awaiting approval",
+    "noPending": "No pending requests"
+  },
+  "assistantStatus": {
+    "pendingTitle": "Request Pending",
+    "pendingDesc": "Your affiliation request is being reviewed by the doctor. You will be notified once approved.",
+    "rejectedTitle": "Request Rejected",
+    "rejectedDesc": "Your affiliation request was rejected by the doctor."
+  },
+  "assistantPatients": {
+    "title": "Patients",
+    "subtitle": "Affiliated doctor's patients"
   },
   "calendar": {
     "title": "Book an appointment",
@@ -309,5 +361,63 @@
     "bookingSuccess": "Appointment booked successfully",
     "newAppointment": "New Appointment",
     "myAppointments": "My Appointments"
+  },
+  "calendarView": {
+    "today": "Today",
+    "day": "Day",
+    "week": "Week",
+    "month": "Month",
+    "list": "List"
+  },
+  "consultation": {
+    "open": "Open consultation",
+    "tabConsultation": "Consultation",
+    "tabMedical": "Medical record",
+    "notes": "Consultation notes",
+    "notesPlaceholder": "Observations, diagnosis, recommendations...",
+    "medications": "Prescribed medications",
+    "medicationsPlaceholder": "List of prescribed medications...",
+    "complete": "Complete consultation",
+    "saved": "Consultation saved",
+    "conditionAdded": "Condition added",
+    "allergyAdded": "Allergy added",
+    "medicationAdded": "Medication added",
+    "vaccinationAdded": "Vaccination added",
+    "conditionName": "Condition name",
+    "allergen": "Allergen",
+    "medicationName": "Medication name",
+    "vaccinationName": "Vaccine name",
+    "optional": "Optional",
+    "chiefComplaint": "Chief complaint",
+    "chiefComplaintPlaceholder": "Why is the patient consulting today?",
+    "diagnosis": "Diagnosis",
+    "diagnosisPlaceholder": "Diagnosis...",
+    "treatment": "Treatment plan",
+    "treatmentPlaceholder": "Recommended treatment...",
+    "prescriptions": "Prescription",
+    "prescriptionsPlaceholder": "Prescribed medications...",
+    "followUpDate": "Follow-up date",
+    "followUpNotes": "Follow-up instructions",
+    "draftSaved": "Draft saved"
+  },
+  "doctorSettings": {
+    "title": "My Settings",
+    "subtitle": "Customize your parameters. Empty values use the global settings.",
+    "notice": "Settings you define here apply only to your profile and override the system global settings.",
+    "maxAppointmentsPerDay": "Maximum appointments per day",
+    "maxAppointmentsPerDayDesc": "Limits the number of appointments you accept per day.",
+    "minAppointmentDuration": "Minimum appointment duration",
+    "minAppointmentDurationDesc": "Minimum allowed duration for a consultation.",
+    "maxAppointmentDuration": "Maximum appointment duration",
+    "maxAppointmentDurationDesc": "Maximum allowed duration for a consultation.",
+    "maxFamilyPatients": "Maximum family patients",
+    "maxFamilyPatientsDesc": "Maximum number of patients you take on as a family doctor.",
+    "globalValue": "Global value",
+    "customized": "Customized",
+    "usingGlobal": "Global value",
+    "resetToGlobal": "Reset to global value",
+    "unitAppointments": "appt/day",
+    "unitMinutes": "min",
+    "unitPatients": "patients"
   }
 }

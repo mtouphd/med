@@ -7,6 +7,7 @@ import { DoctorsController } from './doctors.controller';
 import { PatientsModule } from '../patients/patients.module';
 import { AppointmentsModule } from '../appointments/appointments.module';
 import { UsersModule } from '../users/users.module';
+import { SystemSettingsModule } from '../system-settings/system-settings.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { UsersModule } from '../users/users.module';
     forwardRef(() => PatientsModule),
     forwardRef(() => AppointmentsModule),
     UsersModule,
+    SystemSettingsModule,
   ],
   controllers: [DoctorsController],
   providers: [DoctorsService],

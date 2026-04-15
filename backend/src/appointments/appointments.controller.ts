@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Put, Delete, Patch, Param, Body, UseGuards, Request, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Patch, Param, Body, UseGuards, Request, Query, BadRequestException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AppointmentsService } from './appointments.service';
 import { CreateAppointmentDto, UpdateAppointmentDto } from './dto/appointment.dto';
+import { AppointmentStatus } from './entities/appointment.entity';
 import { RejectAppointmentDto } from './dto/reject-appointment.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -120,7 +121,7 @@ export class AppointmentsController {
   }
 
   @Get('doctor/:doctorId/range')
-  @Roles(UserRole.DOCTOR, UserRole.ADMIN)
+  @Roles(UserRole.DOCTOR, UserRole.ADMIN, UserRole.PATIENT)
   getAppointmentsByDateRange(
     @Param('doctorId') doctorId: string,
     @Query('startDate') startDate: string,
@@ -156,15 +157,28 @@ export class AppointmentsController {
   }
 
   @Put(':id/approve')
-  @Roles(UserRole.DOCTOR, UserRole.ADMIN)
+  @Roles(UserRole.DOCTOR, UserRole.ADMIN, UserRole.ASSISTANT)
   approveAppointment(@Param('id') id: string) {
     return this.appointmentsService.approveAppointment(id);
   }
 
+  @Patch(':id/complete')
+  @Roles(UserRole.DOCTOR, UserRole.ASSISTANT)
+  completeAppointment(@Param('id') id: string) {
+    return this.appointmentsService.update(id, { status: AppointmentStatus.COMPLETED });
+  }
+
   @Put(':id/cancel')
-  @Roles(UserRole.DOCTOR, UserRole.ADMIN, UserRole.PATIENT)
-  cancelAppointment(@Param('id') id: string) {
-    return this.appointmentsService.cancelAppointment(id);
+  @Roles(UserRole.DOCTOR, UserRole.ADMIN, UserRole.PATIENT, UserRole.ASSISTANT)
+  cancelAppointment(
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+    @Request() req,
+  ) {
+    if (req.user.role === UserRole.DOCTOR && !body?.reason?.trim()) {
+      throw new BadRequestException('Cancellation reason is required for doctors');
+    }
+    return this.appointmentsService.cancelAppointment(id, body?.reason);
   }
 
   // ==================== WORKFLOW D'APPROBATION (BR-W-001, BR-W-002, BR-W-003) ====================

@@ -11,6 +11,7 @@ import { HistoryModule } from './history/history.module';
 import { FamilyDoctorRequestsModule } from './family-doctor-requests/family-doctor-requests.module';
 import { SystemSettingsModule } from './system-settings/system-settings.module';
 import { AssistantsModule } from './assistants/assistants.module';
+import { ConsultationsModule } from './consultations/consultations.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { AssistantsModule } from './assistants/assistants.module';
     FamilyDoctorRequestsModule,
     SystemSettingsModule,
     AssistantsModule,
+    ConsultationsModule,
   ],
 })
 export class AppModule {}

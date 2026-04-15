@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { useLanguage } from '@/lib/language-context';
@@ -8,6 +8,7 @@ import { UserRole } from '@/types';
 import { Shield, Calendar, ArrowRight, Stethoscope } from 'lucide-react';
 import MedicalLogo from '@/components/MedicalLogo';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { auth as authApi } from '@/lib/api';
 
 export default function Home() {
   const { t, locale } = useLanguage();
@@ -17,9 +18,17 @@ export default function Home() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [role, setRole] = useState<UserRole>(UserRole.PATIENT);
+  const [requestedDoctorId, setRequestedDoctorId] = useState('');
+  const [publicDoctors, setPublicDoctors] = useState<{ id: string; firstName: string; lastName: string; specialty: string }[]>([]);
   const [error, setError] = useState('');
   const { login, register } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (!isLogin && role === UserRole.ASSISTANT) {
+      authApi.getPublicDoctors().then((res) => setPublicDoctors(res.data)).catch(() => {});
+    }
+  }, [isLogin, role]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +38,10 @@ export default function Home() {
       if (isLogin) {
         await login(email, password);
       } else {
-        await register({ email, password, firstName, lastName, role });
+        await register({
+          email, password, firstName, lastName, role,
+          ...(role === UserRole.ASSISTANT && requestedDoctorId ? { requestedDoctorId } : {}),
+        });
       }
       router.push('/dashboard');
     } catch (err: any) {
@@ -207,14 +219,35 @@ export default function Home() {
                     </label>
                     <select
                       value={role}
-                      onChange={(e) => setRole(e.target.value as UserRole)}
+                      onChange={(e) => { setRole(e.target.value as UserRole); setRequestedDoctorId(''); }}
                       className="w-full px-4 py-2.5 bg-primary-50/50 border border-primary-100 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                     >
                       <option value={UserRole.PATIENT}>{t('auth.patient')}</option>
                       <option value={UserRole.DOCTOR}>{t('auth.doctor')}</option>
-                      <option value={UserRole.ADMIN}>{t('auth.admin')}</option>
+                      <option value={UserRole.ASSISTANT}>{t('auth.assistant')}</option>
                     </select>
                   </div>
+                  {/* Doctor selector for assistants */}
+                  {role === UserRole.ASSISTANT && (
+                    <div>
+                      <label className="block text-sm font-medium text-primary-700 mb-1.5">
+                        {t('auth.selectDoctor')}
+                      </label>
+                      <select
+                        value={requestedDoctorId}
+                        onChange={(e) => setRequestedDoctorId(e.target.value)}
+                        required
+                        className="w-full px-4 py-2.5 bg-primary-50/50 border border-primary-100 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                      >
+                        <option value="">{t('auth.chooseDoctorPlaceholder')}</option>
+                        {publicDoctors.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            Dr. {d.firstName} {d.lastName} — {d.specialty}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </>
               )}
 

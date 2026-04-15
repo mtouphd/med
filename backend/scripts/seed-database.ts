@@ -50,8 +50,8 @@ async function seed() {
         wednesday: { start: '09:00', end: '17:00', enabled: true },
         thursday: { start: '09:00', end: '17:00', enabled: true },
         friday: { start: '09:00', end: '15:00', enabled: true },
-        saturday: { start: '00:00', end: '00:00', enabled: false },
-        sunday: { start: '00:00', end: '00:00', enabled: false },
+        saturday: { start: '09:00', end: '17:00', enabled: true },
+        sunday: { start: '09:00', end: '17:00', enabled: true },
       },
     });
     console.log(`✅ Jean Dupont créé: ${userDoctor1.email} - Cardiologie\n`);
@@ -80,8 +80,8 @@ async function seed() {
         wednesday: { start: '09:00', end: '17:00', enabled: true },
         thursday: { start: '09:00', end: '17:00', enabled: true },
         friday: { start: '09:00', end: '15:00', enabled: true },
-        saturday: { start: '00:00', end: '00:00', enabled: false },
-        sunday: { start: '00:00', end: '00:00', enabled: false },
+        saturday: { start: '09:00', end: '17:00', enabled: true },
+        sunday: { start: '09:00', end: '17:00', enabled: true },
       },
     });
     console.log(`✅ Marie Martin créé: ${userDoctor2.email} - Pédiatrie\n`);
@@ -110,8 +110,8 @@ async function seed() {
         wednesday: { start: '09:00', end: '17:00', enabled: true },
         thursday: { start: '09:00', end: '17:00', enabled: true },
         friday: { start: '09:00', end: '15:00', enabled: true },
-        saturday: { start: '00:00', end: '00:00', enabled: false },
-        sunday: { start: '00:00', end: '00:00', enabled: false },
+        saturday: { start: '09:00', end: '17:00', enabled: true },
+        sunday: { start: '09:00', end: '17:00', enabled: true },
       },
     });
     console.log(`✅ Pierre Bernard créé: ${userDoctor3.email} - Dermatologie\n`);
@@ -139,8 +139,8 @@ async function seed() {
         wednesday: { start: '09:00', end: '17:00', enabled: true },
         thursday: { start: '09:00', end: '17:00', enabled: true },
         friday: { start: '09:00', end: '15:00', enabled: true },
-        saturday: { start: '00:00', end: '00:00', enabled: false },
-        sunday: { start: '00:00', end: '00:00', enabled: false },
+        saturday: { start: '09:00', end: '17:00', enabled: true },
+        sunday: { start: '09:00', end: '17:00', enabled: true },
       },
     });
     console.log(`✅ Sophie Dubois créé: ${userDoctor4.email} - Neurologie\n`);
@@ -168,8 +168,8 @@ async function seed() {
         wednesday: { start: '09:00', end: '17:00', enabled: true },
         thursday: { start: '09:00', end: '17:00', enabled: true },
         friday: { start: '09:00', end: '15:00', enabled: true },
-        saturday: { start: '00:00', end: '00:00', enabled: false },
-        sunday: { start: '00:00', end: '00:00', enabled: false },
+        saturday: { start: '09:00', end: '17:00', enabled: true },
+        sunday: { start: '09:00', end: '17:00', enabled: true },
       },
     });
     console.log(`✅ Luc Laurent créé: ${userDoctor5.email} - Médecine Générale\n`);

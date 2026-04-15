@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'; // NotFoundException kept for getMedicalRecord / updateMedicalRecord
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MedicalRecord } from './entities/medical-record.entity';
@@ -48,6 +48,23 @@ export class MedicalRecordsService {
   }
 
   /**
+   * Récupérer ou créer automatiquement le dossier médical d'un patient
+   * (évite NotFoundException si le dossier n'a pas encore été créé)
+   */
+  private async getOrCreateMedicalRecord(patientId: string): Promise<MedicalRecord> {
+    let medicalRecord = await this.medicalRecordsRepository.findOne({
+      where: { patientId },
+    });
+
+    if (!medicalRecord) {
+      medicalRecord = this.medicalRecordsRepository.create({ patientId });
+      medicalRecord = await this.medicalRecordsRepository.save(medicalRecord);
+    }
+
+    return medicalRecord;
+  }
+
+  /**
    * Récupérer le dossier médical complet d'un patient
    */
   async getMedicalRecord(patientId: string): Promise<MedicalRecord> {
@@ -76,14 +93,7 @@ export class MedicalRecordsService {
       generalNotes: string;
     }>,
   ): Promise<MedicalRecord> {
-    const medicalRecord = await this.medicalRecordsRepository.findOne({
-      where: { patientId },
-    });
-
-    if (!medicalRecord) {
-      throw new NotFoundException('Medical record not found');
-    }
-
+    const medicalRecord = await this.getOrCreateMedicalRecord(patientId);
     Object.assign(medicalRecord, updateData);
     return this.medicalRecordsRepository.save(medicalRecord);
   }
@@ -98,14 +108,7 @@ export class MedicalRecordsService {
     createDto: CreateMedicalConditionDto,
     diagnosedBy?: string,
   ): Promise<MedicalCondition> {
-    // Vérifier que le dossier médical existe
-    const medicalRecord = await this.medicalRecordsRepository.findOne({
-      where: { patientId },
-    });
-
-    if (!medicalRecord) {
-      throw new NotFoundException('Medical record not found');
-    }
+    const medicalRecord = await this.getOrCreateMedicalRecord(patientId);
 
     const condition = this.conditionsRepository.create({
       ...createDto,
@@ -143,9 +146,7 @@ export class MedicalRecordsService {
       where: { patientId },
     });
 
-    if (!medicalRecord) {
-      throw new NotFoundException('Medical record not found');
-    }
+    if (!medicalRecord) return [];
 
     return this.conditionsRepository.find({
       where: { medicalRecordId: medicalRecord.id },
@@ -162,9 +163,7 @@ export class MedicalRecordsService {
       where: { patientId },
     });
 
-    if (!medicalRecord) {
-      throw new NotFoundException('Medical record not found');
-    }
+    if (!medicalRecord) return [];
 
     return this.conditionsRepository.find({
       where: {
@@ -184,13 +183,7 @@ export class MedicalRecordsService {
     patientId: string,
     createDto: CreateAllergyDto,
   ): Promise<Allergy> {
-    const medicalRecord = await this.medicalRecordsRepository.findOne({
-      where: { patientId },
-    });
-
-    if (!medicalRecord) {
-      throw new NotFoundException('Medical record not found');
-    }
+    const medicalRecord = await this.getOrCreateMedicalRecord(patientId);
 
     const allergy = this.allergiesRepository.create({
       ...createDto,
@@ -208,9 +201,7 @@ export class MedicalRecordsService {
       where: { patientId },
     });
 
-    if (!medicalRecord) {
-      throw new NotFoundException('Medical record not found');
-    }
+    if (!medicalRecord) return [];
 
     return this.allergiesRepository.find({
       where: { medicalRecordId: medicalRecord.id },
@@ -296,13 +287,7 @@ export class MedicalRecordsService {
     prescribedBy?: string,
     forceOverrideAllergy = false,
   ): Promise<Medication> {
-    const medicalRecord = await this.medicalRecordsRepository.findOne({
-      where: { patientId },
-    });
-
-    if (!medicalRecord) {
-      throw new NotFoundException('Medical record not found');
-    }
+    const medicalRecord = await this.getOrCreateMedicalRecord(patientId);
 
     // BR-DM-007: Vérification allergies OBLIGATOIRE
     const allergyCheck = await this.canPrescribe(patientId, createDto.name);
@@ -363,9 +348,7 @@ export class MedicalRecordsService {
       where: { patientId },
     });
 
-    if (!medicalRecord) {
-      throw new NotFoundException('Medical record not found');
-    }
+    if (!medicalRecord) return [];
 
     return this.medicationsRepository.find({
       where: { medicalRecordId: medicalRecord.id },
@@ -382,9 +365,7 @@ export class MedicalRecordsService {
       where: { patientId },
     });
 
-    if (!medicalRecord) {
-      throw new NotFoundException('Medical record not found');
-    }
+    if (!medicalRecord) return [];
 
     return this.medicationsRepository.find({
       where: {
@@ -413,13 +394,7 @@ export class MedicalRecordsService {
     },
     administeredBy?: string,
   ): Promise<Vaccination> {
-    const medicalRecord = await this.medicalRecordsRepository.findOne({
-      where: { patientId },
-    });
-
-    if (!medicalRecord) {
-      throw new NotFoundException('Medical record not found');
-    }
+    const medicalRecord = await this.getOrCreateMedicalRecord(patientId);
 
     const vaccination = this.vaccinationsRepository.create({
       ...vaccinationData,
@@ -438,9 +413,7 @@ export class MedicalRecordsService {
       where: { patientId },
     });
 
-    if (!medicalRecord) {
-      throw new NotFoundException('Medical record not found');
-    }
+    if (!medicalRecord) return [];
 
     return this.vaccinationsRepository.find({
       where: { medicalRecordId: medicalRecord.id },
@@ -457,9 +430,7 @@ export class MedicalRecordsService {
       where: { patientId },
     });
 
-    if (!medicalRecord) {
-      throw new NotFoundException('Medical record not found');
-    }
+    if (!medicalRecord) return [];
 
     const now = new Date();
     const oneMonthFromNow = new Date();

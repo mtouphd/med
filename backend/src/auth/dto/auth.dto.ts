@@ -29,6 +29,10 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   licenseNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  requestedDoctorId?: string;
 }
 
 export class LoginDto {

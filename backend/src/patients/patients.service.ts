@@ -244,7 +244,35 @@ export class PatientsService {
   async getFamilyPatients(doctorId: string): Promise<Patient[]> {
     return this.patientsRepository.find({
       where: { familyDoctorId: doctorId },
-      relations: ['user', 'familyDoctor'],
+      relations: ['user', 'familyDoctor', 'familyDoctor.user'],
     });
+  }
+
+  /**
+   * Tous les patients distincts ayant eu un RDV avec ce médecin
+   * (union avec les patients de famille)
+   */
+  async getPatientsByDoctor(doctorId: string): Promise<Patient[]> {
+    // Patients de famille
+    const familyPatients = await this.patientsRepository.find({
+      where: { familyDoctorId: doctorId },
+      relations: ['user', 'familyDoctor', 'familyDoctor.user'],
+    });
+
+    // Patients ayant eu un RDV (via sous-requête)
+    const aptPatients = await this.patientsRepository
+      .createQueryBuilder('patient')
+      .innerJoin('appointments', 'apt', 'apt.patientId = patient.id AND apt.doctorId = :doctorId', { doctorId })
+      .leftJoinAndSelect('patient.user', 'user')
+      .leftJoinAndSelect('patient.familyDoctor', 'familyDoctor')
+      .leftJoinAndSelect('familyDoctor.user', 'fdUser')
+      .getMany();
+
+    // Union dédupliquée par id
+    const map = new Map<string, Patient>();
+    for (const p of [...familyPatients, ...aptPatients]) {
+      map.set(p.id, p);
+    }
+    return Array.from(map.values());
   }
 }

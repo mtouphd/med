@@ -26,11 +26,13 @@
     "view": "Voir",
     "details": "Détails",
     "noData": "Aucune donnée disponible",
+    "from": "Depuis",
     "error": "Une erreur s'est produite",
     "success": "Opération réussie",
     "approve": "Approuver",
     "reject": "Rejeter",
-    "all": "Tous"
+    "all": "Tous",
+    "page": "Page"
   },
   "auth": {
     "welcomeBack": "Bon retour",
@@ -46,6 +48,9 @@
     "patient": "Patient",
     "doctor": "Médecin",
     "admin": "Administrateur",
+    "assistant": "Assistant médical",
+    "selectDoctor": "Médecin affilié",
+    "chooseDoctorPlaceholder": "-- Choisir un médecin --",
     "signInToAccount": "Connectez-vous à votre compte",
     "startManagingHealth": "Commencez à gérer votre santé",
     "dontHaveAccount": "Vous n'avez pas de compte?",
@@ -71,6 +76,8 @@
     "patientFolder": "Dossier patient",
     "doctors": "Médecins",
     "assistants": "Mes assistants",
+    "assistantRequests": "Demandes d'assistants",
+    "myPatients": "Mes patients",
     "admin": "Admin",
     "overview": "Aperçu",
     "patients": "Patients",
@@ -119,7 +126,16 @@
     },
     "approve": "Approuver",
     "reject": "Rejeter",
-    "cancel": "Annuler"
+    "cancel": "Annuler",
+    "rejectionReason": "Motif de rejet",
+    "cancellationReason": "Motif d'annulation",
+    "cancelTitle": "Annuler le rendez-vous",
+    "cancelReasonPrompt": "Veuillez indiquer la raison de l'annulation. Le patient sera informé.",
+    "cancelReasonPlaceholder": "Ex: Indisponibilité, urgence...",
+    "confirmCancel": "Confirmer l'annulation",
+    "selectPatient": "Sélectionner un patient",
+    "selectPatientPlaceholder": "-- Choisir un patient --",
+    "selectPatientFirst": "Sélectionnez d'abord un patient"
   },
   "consultations": {
     "subtitle": "Voir vos consultations passées",
@@ -203,6 +219,9 @@
     "title": "Patients",
     "subtitle": "Gérez vos patients",
     "myPatients": "Mes patients",
+    "tabFolder": "Dossiers",
+    "tabAppointments": "Rendez-vous",
+    "tabFamilyDoctor": "Médecin de famille",
     "selectPatient": "Sélectionnez un patient pour voir les détails",
     "medicalSummary": "Résumé médical",
     "patientList": "Liste des patients",
@@ -219,7 +238,20 @@
     "emergencyContact": "Contact d'urgence",
     "phone": "Téléphone",
     "familyDoctor": "Médecin de famille",
-    "noFamilyDoctor": "Pas de médecin de famille"
+    "noFamilyDoctor": "Pas de médecin de famille",
+    "searchPlaceholder": "Rechercher par nom...",
+    "dob": "Date de naissance",
+    "emergencyContact": "Contact d'urgence",
+    "familyDoctorRequest": "Demande de médecin de famille"
+  },
+  "patientDetail": {
+    "tabInfo": "Informations",
+    "tabMedical": "Dossier médical",
+    "tabAppointments": "Rendez-vous",
+    "tabConsultations": "Consultations",
+    "tabRequests": "Demandes",
+    "upcoming": "À venir",
+    "past": "Passés"
   },
   "medicalRecord": {
     "title": "Dossier médical",
@@ -243,7 +275,10 @@
     "frequency": "Fréquence",
     "prescribedBy": "Prescrit par",
     "startDate": "Date de début",
-    "endDate": "Date de fin"
+    "endDate": "Date de fin",
+    "height": "Taille",
+    "weight": "Poids",
+    "organDonor": "Donneur d'organes"
   },
   "admin": {
     "title": "Administration",
@@ -292,7 +327,24 @@
     "removed": "Assistant retiré avec succès",
     "confirmRemove": "Êtes-vous sûr de vouloir retirer cet assistant?",
     "jobTitle": "Fonction",
-    "jobTitlePlaceholder": "Ex: Secrétaire médicale, Infirmière..."
+    "jobTitlePlaceholder": "Ex: Secrétaire médicale, Infirmière...",
+    "tabRoster": "Dossiers",
+    "tabRequests": "Demandes"
+  },
+  "assistantRequests": {
+    "title": "Demandes d'affiliation",
+    "subtitle": "Assistants médicaux en attente d'approbation",
+    "noPending": "Aucune demande en attente"
+  },
+  "assistantStatus": {
+    "pendingTitle": "Demande en attente",
+    "pendingDesc": "Votre demande d'affiliation est en cours d'examen par le médecin. Vous serez notifié une fois approuvé.",
+    "rejectedTitle": "Demande refusée",
+    "rejectedDesc": "Votre demande d'affiliation a été refusée par le médecin."
+  },
+  "assistantPatients": {
+    "title": "Patients",
+    "subtitle": "Patients du médecin affilié"
   },
   "calendar": {
     "title": "Prendre rendez-vous",
@@ -309,5 +361,63 @@
     "bookingSuccess": "Rendez-vous réservé avec succès",
     "newAppointment": "Nouveau RDV",
     "myAppointments": "Mes rendez-vous"
+  },
+  "calendarView": {
+    "today": "Aujourd'hui",
+    "day": "Jour",
+    "week": "Semaine",
+    "month": "Mois",
+    "list": "Liste"
+  },
+  "consultation": {
+    "open": "Ouvrir la consultation",
+    "tabConsultation": "Consultation",
+    "tabMedical": "Dossier médical",
+    "notes": "Notes de consultation",
+    "notesPlaceholder": "Observations, diagnostic, recommandations...",
+    "medications": "Médicaments prescrits",
+    "medicationsPlaceholder": "Liste des médicaments prescrits...",
+    "complete": "Terminer la consultation",
+    "saved": "Consultation enregistrée",
+    "conditionAdded": "Condition ajoutée",
+    "allergyAdded": "Allergie ajoutée",
+    "medicationAdded": "Médicament ajouté",
+    "vaccinationAdded": "Vaccination ajoutée",
+    "conditionName": "Nom de la condition",
+    "allergen": "Allergène",
+    "medicationName": "Nom du médicament",
+    "vaccinationName": "Nom du vaccin",
+    "optional": "Optionnel",
+    "chiefComplaint": "Motif de consultation",
+    "chiefComplaintPlaceholder": "Pourquoi le patient consulte aujourd'hui ?",
+    "diagnosis": "Diagnostic",
+    "diagnosisPlaceholder": "Diagnostic posé...",
+    "treatment": "Plan de traitement",
+    "treatmentPlaceholder": "Traitement recommandé...",
+    "prescriptions": "Ordonnance",
+    "prescriptionsPlaceholder": "Médicaments prescrits...",
+    "followUpDate": "Date de suivi",
+    "followUpNotes": "Instructions de suivi",
+    "draftSaved": "Brouillon enregistré"
+  },
+  "doctorSettings": {
+    "title": "Mes paramètres",
+    "subtitle": "Personnalisez vos paramètres. Les valeurs vides utilisent les paramètres globaux.",
+    "notice": "Les paramètres que vous définissez ici s'appliquent uniquement à votre profil et remplacent les paramètres globaux du système.",
+    "maxAppointmentsPerDay": "Nombre maximum de rendez-vous par jour",
+    "maxAppointmentsPerDayDesc": "Limite le nombre de rendez-vous que vous acceptez par jour.",
+    "minAppointmentDuration": "Durée minimale d'un rendez-vous",
+    "minAppointmentDurationDesc": "Durée minimale autorisée pour une consultation.",
+    "maxAppointmentDuration": "Durée maximale d'un rendez-vous",
+    "maxAppointmentDurationDesc": "Durée maximale autorisée pour une consultation.",
+    "maxFamilyPatients": "Nombre maximum de patients de famille",
+    "maxFamilyPatientsDesc": "Nombre maximum de patients que vous prenez en charge en tant que médecin de famille.",
+    "globalValue": "Valeur globale",
+    "customized": "Personnalisé",
+    "usingGlobal": "Valeur globale",
+    "resetToGlobal": "Réinitialiser à la valeur globale",
+    "unitAppointments": "rdv/jour",
+    "unitMinutes": "min",
+    "unitPatients": "patients"
   }
 }

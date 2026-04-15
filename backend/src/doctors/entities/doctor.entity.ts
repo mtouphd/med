@@ -23,8 +23,26 @@ export class Doctor {
   @Column({ type: 'text', nullable: true })
   bio: string;
 
-  @Column({ type: 'varchar', length: 500, nullable: true })
-  address: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  street: string;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  postalCode: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  city: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  province: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  country: string;
+
+  @Column({ type: 'float', nullable: true })
+  latitude: number;
+
+  @Column({ type: 'float', nullable: true })
+  longitude: number;
 
   @Column({ default: 30 })
   consultationDuration: number;
@@ -40,6 +58,16 @@ export class Doctor {
   // ========== LIMITE PATIENTS DE FAMILLE ==========
   @Column({ nullable: true, default: null })
   maxFamilyPatients: number;
+
+  // ========== PARAMÈTRES PERSONNALISÉS (override global) ==========
+  @Column({ nullable: true, default: null })
+  maxAppointmentsPerDay: number;
+
+  @Column({ nullable: true, default: null })
+  minAppointmentDuration: number;
+
+  @Column({ nullable: true, default: null })
+  maxAppointmentDuration: number;
 
   // ========== RELATIONS ==========
   @OneToMany('Patient', 'familyDoctor')

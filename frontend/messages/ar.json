@@ -26,11 +26,13 @@
     "view": "عرض",
     "details": "التفاصيل",
     "noData": "لا توجد بيانات",
+    "from": "منذ",
     "error": "حدث خطأ",
     "success": "تمت العملية بنجاح",
     "approve": "موافقة",
     "reject": "رفض",
-    "all": "الكل"
+    "all": "الكل",
+    "page": "صفحة"
   },
   "auth": {
     "welcomeBack": "مرحباً بعودتك",
@@ -46,6 +48,9 @@
     "patient": "مريض",
     "doctor": "طبيب",
     "admin": "مدير",
+    "assistant": "مساعد طبي",
+    "selectDoctor": "الطبيب المنتسب",
+    "chooseDoctorPlaceholder": "-- اختر طبيباً --",
     "signInToAccount": "تسجيل الدخول إلى حسابك",
     "startManagingHealth": "ابدأ بإدارة صحتك",
     "dontHaveAccount": "ليس لديك حساب؟",
@@ -75,7 +80,9 @@
     "patients": "المرضى",
     "doctorRequests": "طلبات الطبيب",
     "settings": "الإعدادات",
-    "assistants": "مساعديّ"
+    "assistants": "مساعديّ",
+    "assistantRequests": "طلبات المساعدين",
+    "myPatients": "مرضاي"
   },
   "dashboard": {
     "welcome": "مرحباً",
@@ -119,7 +126,16 @@
     },
     "approve": "موافقة",
     "reject": "رفض",
-    "cancel": "إلغاء"
+    "cancel": "إلغاء",
+    "rejectionReason": "سبب الرفض",
+    "cancellationReason": "سبب الإلغاء",
+    "cancelTitle": "إلغاء الموعد",
+    "cancelReasonPrompt": "يرجى تقديم سبب الإلغاء. سيتم إعلام المريض.",
+    "cancelReasonPlaceholder": "مثال: عدم التوفر، طارئ...",
+    "confirmCancel": "تأكيد الإلغاء",
+    "selectPatient": "اختر مريضاً",
+    "selectPatientPlaceholder": "-- اختر مريضاً --",
+    "selectPatientFirst": "يرجى اختيار مريض أولاً"
   },
   "consultations": {
     "subtitle": "عرض استشاراتك السابقة",
@@ -203,6 +219,9 @@
     "title": "المرضى",
     "subtitle": "إدارة مرضاك",
     "myPatients": "مرضاي",
+    "tabFolder": "الملفات",
+    "tabAppointments": "المواعيد",
+    "tabFamilyDoctor": "طبيب الأسرة",
     "selectPatient": "اختر مريضاً لعرض التفاصيل",
     "medicalSummary": "الملخص الطبي",
     "patientList": "قائمة المرضى",
@@ -219,7 +238,20 @@
     "emergencyContact": "جهة اتصال الطوارئ",
     "phone": "الهاتف",
     "familyDoctor": "طبيب الأسرة",
-    "noFamilyDoctor": "لا يوجد طبيب أسرة"
+    "noFamilyDoctor": "لا يوجد طبيب أسرة",
+    "searchPlaceholder": "البحث بالاسم...",
+    "dob": "تاريخ الميلاد",
+    "emergencyContact": "جهة اتصال الطوارئ",
+    "familyDoctorRequest": "طلب طبيب الأسرة"
+  },
+  "patientDetail": {
+    "tabInfo": "المعلومات",
+    "tabMedical": "السجل الطبي",
+    "tabAppointments": "المواعيد",
+    "tabConsultations": "الاستشارات",
+    "tabRequests": "الطلبات",
+    "upcoming": "القادمة",
+    "past": "السابقة"
   },
   "medicalRecord": {
     "title": "السجل الطبي",
@@ -243,7 +275,10 @@
     "frequency": "التكرار",
     "prescribedBy": "موصوف من قبل",
     "startDate": "تاريخ البدء",
-    "endDate": "تاريخ الانتهاء"
+    "endDate": "تاريخ الانتهاء",
+    "height": "الطول",
+    "weight": "الوزن",
+    "organDonor": "متبرع بالأعضاء"
   },
   "admin": {
     "title": "الإدارة",
@@ -292,7 +327,24 @@
     "removed": "تم إزالة المساعد بنجاح",
     "confirmRemove": "هل أنت متأكد من إزالة هذا المساعد؟",
     "jobTitle": "المسمى الوظيفي",
-    "jobTitlePlaceholder": "مثال: سكرتيرة طبية، ممرضة..."
+    "jobTitlePlaceholder": "مثال: سكرتيرة طبية، ممرضة...",
+    "tabRoster": "القائمة",
+    "tabRequests": "الطلبات"
+  },
+  "assistantRequests": {
+    "title": "طلبات الانتساب",
+    "subtitle": "المساعدون الطبيون في انتظار الموافقة",
+    "noPending": "لا توجد طلبات معلقة"
+  },
+  "assistantStatus": {
+    "pendingTitle": "الطلب قيد الانتظار",
+    "pendingDesc": "طلب انتسابك قيد المراجعة من قبل الطبيب. ستُعلَم عند الموافقة.",
+    "rejectedTitle": "تم رفض الطلب",
+    "rejectedDesc": "تم رفض طلب انتسابك من قبل الطبيب."
+  },
+  "assistantPatients": {
+    "title": "المرضى",
+    "subtitle": "مرضى الطبيب المنتسب"
   },
   "calendar": {
     "title": "حجز موعد",
@@ -309,5 +361,63 @@
     "bookingSuccess": "تم حجز الموعد بنجاح",
     "newAppointment": "موعد جديد",
     "myAppointments": "مواعيدي"
+  },
+  "calendarView": {
+    "today": "اليوم",
+    "day": "يوم",
+    "week": "أسبوع",
+    "month": "شهر",
+    "list": "قائمة"
+  },
+  "consultation": {
+    "open": "فتح الاستشارة",
+    "tabConsultation": "الاستشارة",
+    "tabMedical": "السجل الطبي",
+    "notes": "ملاحظات الاستشارة",
+    "notesPlaceholder": "ملاحظات، تشخيص، توصيات...",
+    "medications": "الأدوية الموصوفة",
+    "medicationsPlaceholder": "قائمة الأدوية الموصوفة...",
+    "complete": "إنهاء الاستشارة",
+    "saved": "تم حفظ الاستشارة",
+    "conditionAdded": "تمت إضافة الحالة",
+    "allergyAdded": "تمت إضافة الحساسية",
+    "medicationAdded": "تم إضافة الدواء",
+    "vaccinationAdded": "تمت إضافة التطعيم",
+    "conditionName": "اسم الحالة",
+    "allergen": "مسبب الحساسية",
+    "medicationName": "اسم الدواء",
+    "vaccinationName": "اسم اللقاح",
+    "optional": "اختياري",
+    "chiefComplaint": "سبب الزيارة",
+    "chiefComplaintPlaceholder": "لماذا يستشير المريض اليوم؟",
+    "diagnosis": "التشخيص",
+    "diagnosisPlaceholder": "التشخيص الموضوع...",
+    "treatment": "خطة العلاج",
+    "treatmentPlaceholder": "العلاج الموصى به...",
+    "prescriptions": "الوصفة الطبية",
+    "prescriptionsPlaceholder": "الأدوية الموصوفة...",
+    "followUpDate": "تاريخ المتابعة",
+    "followUpNotes": "تعليمات المتابعة",
+    "draftSaved": "تم حفظ المسودة"
+  },
+  "doctorSettings": {
+    "title": "إعداداتي",
+    "subtitle": "خصّص معاملاتك. القيم الفارغة تستخدم الإعدادات العامة.",
+    "notice": "الإعدادات التي تحددها هنا تطبق فقط على ملفك الشخصي وتتجاوز الإعدادات العامة للنظام.",
+    "maxAppointmentsPerDay": "الحد الأقصى للمواعيد في اليوم",
+    "maxAppointmentsPerDayDesc": "يحدد عدد المواعيد التي تقبلها في اليوم.",
+    "minAppointmentDuration": "الحد الأدنى لمدة الموعد",
+    "minAppointmentDurationDesc": "الحد الأدنى المسموح به لمدة الاستشارة.",
+    "maxAppointmentDuration": "الحد الأقصى لمدة الموعد",
+    "maxAppointmentDurationDesc": "الحد الأقصى المسموح به لمدة الاستشارة.",
+    "maxFamilyPatients": "الحد الأقصى لمرضى الأسرة",
+    "maxFamilyPatientsDesc": "الحد الأقصى لعدد المرضى الذين تتولى رعايتهم كطبيب أسرة.",
+    "globalValue": "القيمة العامة",
+    "customized": "مخصص",
+    "usingGlobal": "القيمة العامة",
+    "resetToGlobal": "إعادة التعيين إلى القيمة العامة",
+    "unitAppointments": "موعد/يوم",
+    "unitMinutes": "دقيقة",
+    "unitPatients": "مريض"
   }
 }

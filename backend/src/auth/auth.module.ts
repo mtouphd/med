@@ -9,10 +9,11 @@ import { JwtStrategy } from './jwt.strategy';
 import { User } from '../users/entities/user.entity';
 import { Doctor } from '../doctors/entities/doctor.entity';
 import { Patient } from '../patients/entities/patient.entity';
+import { Assistant } from '../assistants/entities/assistant.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Doctor, Patient]),
+    TypeOrmModule.forFeature([User, Doctor, Patient, Assistant]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

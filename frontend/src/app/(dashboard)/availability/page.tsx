@@ -18,8 +18,8 @@ const defaultSchedule: Schedule = {
   wednesday: { start: '09:00', end: '17:00', enabled: true },
   thursday: { start: '09:00', end: '17:00', enabled: true },
   friday: { start: '09:00', end: '17:00', enabled: true },
-  saturday: { start: '09:00', end: '12:00', enabled: false },
-  sunday: { start: '09:00', end: '12:00', enabled: false },
+  saturday: { start: '09:00', end: '17:00', enabled: true },
+  sunday: { start: '09:00', end: '17:00', enabled: true },
 };
 
 const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];

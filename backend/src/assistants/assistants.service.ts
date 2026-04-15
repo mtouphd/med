@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Assistant } from './entities/assistant.entity';
+import { Assistant, AffiliationStatus } from './entities/assistant.entity';
 import { Doctor } from '../doctors/entities/doctor.entity';
+import { Patient } from '../patients/entities/patient.entity';
 import { CreateAssistantDto, UpdateAssistantDto } from './dto/assistant.dto';
 
 @Injectable()
@@ -12,6 +13,8 @@ export class AssistantsService {
     private assistantsRepository: Repository<Assistant>,
     @InjectRepository(Doctor)
     private doctorsRepository: Repository<Doctor>,
+    @InjectRepository(Patient)
+    private patientsRepository: Repository<Patient>,
   ) {}
 
   async findAll(): Promise<Assistant[]> {
@@ -124,5 +127,84 @@ export class AssistantsService {
   async getDoctorsForAssistant(assistantId: string): Promise<Doctor[]> {
     const assistant = await this.findOne(assistantId);
     return assistant.doctors;
+  }
+
+  // ==================== AFFILIATION WORKFLOW ====================
+
+  /**
+   * Get all pending affiliation requests for a doctor
+   */
+  async getPendingRequestsForDoctor(doctorId: string): Promise<Assistant[]> {
+    return this.assistantsRepository.find({
+      where: { requestedDoctorId: doctorId, affiliationStatus: AffiliationStatus.PENDING },
+      relations: ['user'],
+    });
+  }
+
+  /**
+   * Doctor approves an assistant's affiliation request
+   */
+  async approveAffiliation(assistantId: string): Promise<Assistant> {
+    const assistant = await this.findOne(assistantId);
+
+    if (assistant.affiliationStatus !== AffiliationStatus.PENDING) {
+      throw new BadRequestException('Request is not pending');
+    }
+
+    if (!assistant.requestedDoctorId) {
+      throw new BadRequestException('No doctor requested');
+    }
+
+    const doctor = await this.doctorsRepository.findOne({
+      where: { id: assistant.requestedDoctorId },
+    });
+    if (!doctor) {
+      throw new NotFoundException('Requested doctor not found');
+    }
+
+    assistant.affiliationStatus = AffiliationStatus.APPROVED;
+    const alreadyAssigned = assistant.doctors.some((d) => d.id === doctor.id);
+    if (!alreadyAssigned) {
+      assistant.doctors.push(doctor);
+    }
+
+    return this.assistantsRepository.save(assistant);
+  }
+
+  /**
+   * Doctor rejects an assistant's affiliation request
+   */
+  async rejectAffiliation(assistantId: string): Promise<Assistant> {
+    const assistant = await this.findOne(assistantId);
+
+    if (assistant.affiliationStatus !== AffiliationStatus.PENDING) {
+      throw new BadRequestException('Request is not pending');
+    }
+
+    assistant.affiliationStatus = AffiliationStatus.REJECTED;
+    return this.assistantsRepository.save(assistant);
+  }
+
+  /**
+   * Get all patients accessible to an approved assistant (patients of their affiliated doctors)
+   */
+  async getPatientsForAssistant(userId: string): Promise<Patient[]> {
+    const assistant = await this.findByUserId(userId);
+
+    if (!assistant || assistant.affiliationStatus !== AffiliationStatus.APPROVED) {
+      return [];
+    }
+
+    const doctorIds = assistant.doctors.map((d) => d.id);
+    if (doctorIds.length === 0) return [];
+
+    // Get family patients of affiliated doctors
+    const patients = await this.patientsRepository
+      .createQueryBuilder('patient')
+      .leftJoinAndSelect('patient.user', 'user')
+      .where('patient.familyDoctorId IN (:...doctorIds)', { doctorIds })
+      .getMany();
+
+    return patients;
   }
 }

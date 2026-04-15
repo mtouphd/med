@@ -85,6 +85,9 @@ export class Appointment {
   @Column({ type: 'text', nullable: true })
   adminRejectionReason: string;
 
+  @Column({ type: 'text', nullable: true })
+  cancellationReason: string;
+
   @Column({ nullable: true })
   requestedBy: string;
 

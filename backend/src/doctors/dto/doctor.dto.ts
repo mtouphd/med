@@ -16,7 +16,31 @@ export class CreateDoctorDto {
 
   @IsOptional()
   @IsString()
-  address?: string;
+  street?: string;
+
+  @IsOptional()
+  @IsString()
+  postalCode?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  province?: string;
+
+  @IsOptional()
+  @IsString()
+  country?: string;
+
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
 
   @IsOptional()
   @IsNumber()
@@ -37,6 +61,24 @@ export class CreateDoctorDto {
   };
 }
 
+export class UpdateDoctorSettingsDto {
+  @IsOptional()
+  @IsNumber()
+  maxAppointmentsPerDay?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  minAppointmentDuration?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  maxAppointmentDuration?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  maxFamilyPatients?: number | null;
+}
+
 export class UpdateDoctorDto {
   @IsOptional()
   @IsString()
@@ -48,7 +90,31 @@ export class UpdateDoctorDto {
 
   @IsOptional()
   @IsString()
-  address?: string;
+  street?: string;
+
+  @IsOptional()
+  @IsString()
+  postalCode?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  province?: string;
+
+  @IsOptional()
+  @IsString()
+  country?: string;
+
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
 
   @IsOptional()
   @IsNumber()
@@ -61,6 +127,18 @@ export class UpdateDoctorDto {
   @IsOptional()
   @IsNumber()
   maxFamilyPatients?: number;
+
+  @IsOptional()
+  @IsNumber()
+  maxAppointmentsPerDay?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  minAppointmentDuration?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  maxAppointmentDuration?: number | null;
 
   @IsOptional()
   @IsObject()

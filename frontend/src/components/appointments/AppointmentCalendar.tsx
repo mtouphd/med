@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Calendar, User, X, Check, AlertCircle } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { Calendar, User, X, Check, AlertCircle, List, Map, MapPin, Clock } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
 import { appointments, doctors } from '@/lib/api';
 import { Doctor, Appointment } from '@/types';
 import CalendarGrid from './CalendarGrid';
 import TimeSlotPicker from './TimeSlotPicker';
+
+const DoctorsMap = dynamic(() => import('@/components/ui/DoctorsMap'), { ssr: false });
 import {
   TimeSlot,
   getCalendarDays,
@@ -19,17 +22,19 @@ import {
 } from './calendar-helpers';
 
 interface AppointmentCalendarProps {
+  /** Pre-fill the calendar at this date (from clicking a calendar slot) */
+  initialDate?: Date;
   onAppointmentCreated?: () => void;
 }
 
-export default function AppointmentCalendar({ onAppointmentCreated }: AppointmentCalendarProps) {
+export default function AppointmentCalendar({ initialDate, onAppointmentCreated }: AppointmentCalendarProps) {
   const { t, locale } = useLanguage();
 
   // State
   const [doctorsList, setDoctorsList] = useState<Doctor[]>([]);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(initialDate ?? new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(initialDate ?? null);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [monthAppointments, setMonthAppointments] = useState<Appointment[]>([]);
@@ -39,6 +44,9 @@ export default function AppointmentCalendar({ onAppointmentCreated }: Appointmen
   const [loadingDoctors, setLoadingDoctors] = useState(true);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Doctor view mode toggle
+  const [doctorViewMode, setDoctorViewMode] = useState<'list' | 'map'>('list');
 
   // Modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -230,26 +238,96 @@ export default function AppointmentCalendar({ onAppointmentCreated }: Appointmen
 
       {/* Doctor selection */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-primary-100 rounded-xl">
-            <User className="w-5 h-5 text-primary-600" />
+        {/* Header + toggle */}
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary-100 rounded-xl">
+              <User className="w-5 h-5 text-primary-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-midnight-900">
+              {t('calendar.selectDoctor')}
+            </h3>
           </div>
-          <h3 className="text-lg font-semibold text-midnight-900">
-            {t('calendar.selectDoctor')}
-          </h3>
+          {/* List / Map toggle */}
+          <div className="flex border border-slate-200 rounded-xl overflow-hidden flex-shrink-0">
+            <button
+              onClick={() => setDoctorViewMode('list')}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${doctorViewMode === 'list' ? 'bg-primary-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+              title="Vue liste"
+            >
+              <List size={14} /> Liste
+            </button>
+            <button
+              onClick={() => setDoctorViewMode('map')}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${doctorViewMode === 'map' ? 'bg-primary-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+              title="Vue carte"
+            >
+              <Map size={14} /> Carte
+            </button>
+          </div>
         </div>
-        <select
-          value={selectedDoctor?.id || ''}
-          onChange={(e) => handleDoctorSelect(e.target.value)}
-          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-midnight-900"
-        >
-          <option value="">{t('appointments.selectDoctor')}</option>
-          {doctorsList.map((doctor) => (
-            <option key={doctor.id} value={doctor.id}>
-              Dr. {doctor.user.firstName} {doctor.user.lastName} - {doctor.specialty}
-            </option>
-          ))}
-        </select>
+
+        {/* Selected doctor badge */}
+        {selectedDoctor && (
+          <div className="flex items-center gap-3 p-3 mb-3 bg-primary-50 border border-primary-200 rounded-xl">
+            <div className="w-9 h-9 rounded-xl bg-primary-200 flex items-center justify-center text-primary-800 font-bold text-sm flex-shrink-0">
+              {selectedDoctor.user?.firstName?.[0]}{selectedDoctor.user?.lastName?.[0]}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-primary-900">
+                Dr. {selectedDoctor.user?.firstName} {selectedDoctor.user?.lastName}
+              </p>
+              <div className="flex items-center gap-3 text-xs text-primary-600 mt-0.5">
+                <span>{selectedDoctor.specialty}</span>
+                {selectedDoctor.city && (
+                  <span className="flex items-center gap-1"><MapPin size={10} />{selectedDoctor.city}</span>
+                )}
+                <span className="flex items-center gap-1"><Clock size={10} />{selectedDoctor.consultationDuration} min</span>
+              </div>
+            </div>
+            <button
+              onClick={() => { setSelectedDoctor(null); setSelectedDate(null); setSelectedSlot(null); }}
+              className="p-1 text-primary-400 hover:text-primary-700 hover:bg-primary-100 rounded-lg transition-colors flex-shrink-0"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
+        {/* LIST MODE */}
+        {doctorViewMode === 'list' && (
+          <select
+            value={selectedDoctor?.id || ''}
+            onChange={(e) => handleDoctorSelect(e.target.value)}
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-midnight-900"
+          >
+            <option value="">{t('appointments.selectDoctor')}</option>
+            {doctorsList.map((doctor) => (
+              <option key={doctor.id} value={doctor.id}>
+                Dr. {doctor.user.firstName} {doctor.user.lastName} — {doctor.specialty}
+                {doctor.city ? ` — ${doctor.city}` : ''}
+                {!doctor.isAvailable ? ' (indisponible)' : ''}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* MAP MODE */}
+        {doctorViewMode === 'map' && (
+          <div className="mt-2">
+            <p className="text-xs text-slate-500 mb-3 flex items-center gap-1">
+              <MapPin size={11} /> Cliquez sur un marqueur puis sur <strong>"Choisir ce médecin"</strong> pour le sélectionner.
+            </p>
+            <DoctorsMap
+              doctors={doctorsList}
+              onSelectDoctor={(doctor) => {
+                handleDoctorSelect(doctor.id);
+                setDoctorViewMode('list');
+              }}
+              selectedDoctorId={selectedDoctor?.id}
+            />
+          </div>
+        )}
       </div>
 
       {/* Calendar and time slots */}

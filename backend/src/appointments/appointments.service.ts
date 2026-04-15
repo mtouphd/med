@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Inject, forwardRef, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, MoreThanOrEqual, In, LessThan } from 'typeorm';
 import { Appointment, AppointmentStatus } from './entities/appointment.entity';
@@ -10,7 +10,9 @@ import { PatientsService } from '../patients/patients.service';
 import { SystemSettingsService } from '../system-settings/system-settings.service';
 
 @Injectable()
-export class AppointmentsService {
+export class AppointmentsService implements OnModuleInit, OnModuleDestroy {
+  private autoCompleteTimer: NodeJS.Timeout;
+
   constructor(
     @InjectRepository(Appointment)
     private appointmentsRepository: Repository<Appointment>,
@@ -22,6 +24,36 @@ export class AppointmentsService {
     private patientsService: PatientsService,
     private systemSettingsService: SystemSettingsService,
   ) {}
+
+  // ─── Auto-complete lifecycle ────────────────────────────────────────────────
+
+  onModuleInit() {
+    // Run once immediately, then every 60 seconds
+    this.runAutoComplete();
+    this.autoCompleteTimer = setInterval(() => this.runAutoComplete(), 60_000);
+  }
+
+  onModuleDestroy() {
+    clearInterval(this.autoCompleteTimer);
+  }
+
+  private async runAutoComplete() {
+    const now = new Date();
+    const confirmed = await this.appointmentsRepository.find({
+      where: { status: AppointmentStatus.CONFIRMED },
+    });
+    const expired = confirmed.filter((apt) => {
+      const end = new Date(new Date(apt.dateTime).getTime() + (apt.duration ?? 30) * 60_000);
+      return end <= now;
+    });
+    if (expired.length > 0) {
+      expired.forEach((apt) => { apt.status = AppointmentStatus.COMPLETED; });
+      await this.appointmentsRepository.save(expired);
+      console.log(`[AutoComplete] ${expired.length} rendez-vous terminé(s) automatiquement.`);
+    }
+  }
+
+  // ─── CRUD ───────────────────────────────────────────────────────────────────
 
   async findAll() {
     return this.appointmentsRepository.find({
@@ -120,16 +152,17 @@ export class AppointmentsService {
       );
     }
 
-    const existingAppointment = await this.appointmentsRepository.findOne({
-      where: {
-        doctorId: createAppointmentDto.doctorId,
-        dateTime: appointmentDate,
-        status: AppointmentStatus.CONFIRMED,
-      },
-    });
+    // Validate doctor's schedule and no slot conflict (CONFIRMED + PENDING)
+    const doctorAvailable = await this.isDoctorAvailable(
+      createAppointmentDto.doctorId,
+      appointmentDate,
+      duration,
+    );
 
-    if (existingAppointment) {
-      throw new BadRequestException('This time slot is already booked');
+    if (!doctorAvailable) {
+      throw new BadRequestException(
+        'Ce créneau est indisponible : le médecin ne travaille pas à cette heure ou le créneau est déjà réservé.',
+      );
     }
 
     const appointment = this.appointmentsRepository.create({
@@ -199,46 +232,59 @@ export class AppointmentsService {
   async checkAvailability(doctorId: string, dateTime: string, duration: number = 30) {
     const requestedDate = new Date(dateTime);
     const doctor = await this.doctorsRepository.findOne({ where: { id: doctorId } });
-    
+
     if (!doctor) {
       throw new NotFoundException('Doctor not found');
     }
 
-    const startOfDay = new Date(requestedDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date(requestedDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Vérifier le schedule du médecin
+    const dayOfWeek = requestedDate
+      .toLocaleDateString('en-US', { weekday: 'long' })
+      .toLowerCase();
+    const daySchedule = doctor.schedule?.[dayOfWeek];
 
-    const existingAppointments = await this.appointmentsRepository.find({
-      where: {
-        doctorId,
-        dateTime: Between(startOfDay, endOfDay),
-        status: AppointmentStatus.CONFIRMED,
-      },
-      order: { dateTime: 'ASC' },
-    });
+    if (!daySchedule) {
+      return { available: false, reason: 'Doctor has no schedule defined' };
+    }
 
-    const requestedStart = requestedDate.getTime();
-    const requestedEnd = requestedStart + (duration * 60000);
+    const isNewFormat =
+      daySchedule['06:00'] !== undefined || daySchedule['08:00'] !== undefined;
 
-    for (const apt of existingAppointments) {
-      const aptStart = new Date(apt.dateTime).getTime();
-      const aptEnd = aptStart + (apt.duration * 60000);
-      
-      if (requestedStart < aptEnd && requestedEnd > aptStart) {
-        return { available: false, reason: 'Time slot already booked' };
+    if (isNewFormat) {
+      const requestedHour =
+        requestedDate.toTimeString().slice(0, 2).padStart(2, '0') + ':00';
+      const slotStatus = daySchedule[requestedHour];
+      if (!slotStatus || slotStatus === 'unavailable') {
+        return { available: false, reason: 'Doctor is not available at this time' };
+      }
+    } else {
+      if (!daySchedule.enabled) {
+        return { available: false, reason: 'Doctor does not work on this day' };
+      }
+      const requestedTime = requestedDate.toTimeString().slice(0, 5);
+      if (requestedTime < daySchedule.start || requestedTime >= daySchedule.end) {
+        return { available: false, reason: 'Outside doctor working hours' };
       }
     }
 
-    const dayOfWeek = requestedDate.getDay();
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      return { available: false, reason: 'Cannot book on weekends' };
-    }
+    // Vérifier conflits de créneaux (CONFIRMED + PENDING)
+    const endTime = new Date(requestedDate.getTime() + duration * 60000);
 
-    const hour = requestedDate.getHours();
-    if (hour < 8 || hour >= 18) {
-      return { available: false, reason: 'Working hours are 8:00 AM to 6:00 PM' };
+    const conflict = await this.appointmentsRepository
+      .createQueryBuilder('appointment')
+      .where('appointment.doctorId = :doctorId', { doctorId })
+      .andWhere('appointment.status IN (:...statuses)', {
+        statuses: [AppointmentStatus.CONFIRMED, AppointmentStatus.PENDING],
+      })
+      .andWhere('appointment.dateTime < :endTime', { endTime })
+      .andWhere(
+        `appointment.dateTime + (appointment.duration || ' minutes')::interval > :startTime`,
+        { startTime: requestedDate },
+      )
+      .getOne();
+
+    if (conflict) {
+      return { available: false, reason: 'Time slot already booked' };
     }
 
     return { available: true };
@@ -301,9 +347,12 @@ export class AppointmentsService {
     return this.appointmentsRepository.save(appointment);
   }
 
-  async cancelAppointment(id: string) {
+  async cancelAppointment(id: string, reason?: string) {
     const appointment = await this.findOne(id);
     appointment.status = AppointmentStatus.CANCELLED;
+    if (reason) {
+      appointment.cancellationReason = reason;
+    }
     return this.appointmentsRepository.save(appointment);
   }
 
@@ -535,7 +584,7 @@ export class AppointmentsService {
       throw new BadRequestException('Doctor not available at this time');
     }
 
-    // Créer rendez-vous en PENDING
+    // Créer rendez-vous en PENDING (en attente d'approbation médecin)
     const appointment = this.appointmentsRepository.create({
       patientId,
       doctorId,
@@ -544,7 +593,7 @@ export class AppointmentsService {
       reason,
       status: AppointmentStatus.PENDING,
       doctorApproved: false,
-      adminApproved: false,
+      adminApproved: true,
       requestedBy,
     });
 
@@ -584,11 +633,7 @@ export class AppointmentsService {
     appointment.doctorApproved = true;
     appointment.doctorApprovedAt = new Date();
     appointment.doctorApprovedBy = doctor.userId;
-
-    // Si admin a déjà approuvé → CONFIRMED
-    if (appointment.adminApproved) {
-      appointment.status = AppointmentStatus.CONFIRMED;
-    }
+    appointment.status = AppointmentStatus.CONFIRMED;
 
     return this.appointmentsRepository.save(appointment);
   }

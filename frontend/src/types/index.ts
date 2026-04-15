@@ -27,14 +27,36 @@ export interface Doctor {
   specialty: string;
   licenseNumber: string;
   bio?: string;
-  address?: string;
+  street?: string;
+  postalCode?: string;
+  city?: string;
+  province?: string;
+  country?: string;
+  latitude?: number;
+  longitude?: number;
   consultationDuration: number;
   isAvailable: boolean;
-  maxFamilyPatients?: number;
+  maxFamilyPatients?: number | null;
+  maxAppointmentsPerDay?: number | null;
+  minAppointmentDuration?: number | null;
+  maxAppointmentDuration?: number | null;
   schedule?: {
     [key: string]: { start: string; end: string; enabled: boolean };
   };
   assistants?: Assistant[];
+}
+
+export interface DoctorSettings {
+  maxAppointmentsPerDay: number | null;
+  minAppointmentDuration: number | null;
+  maxAppointmentDuration: number | null;
+  maxFamilyPatients: number | null;
+  globals: {
+    maxAppointmentsPerDay: number;
+    minAppointmentDuration: number;
+    maxAppointmentDuration: number;
+    maxFamilyPatients: number;
+  };
 }
 
 export interface Patient {
@@ -49,6 +71,12 @@ export interface Patient {
   familyDoctorAssignedAt?: Date;
 }
 
+export enum AffiliationStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}
+
 export interface Assistant {
   id: string;
   userId: string;
@@ -56,6 +84,8 @@ export interface Assistant {
   title?: string;
   bio?: string;
   isActive: boolean;
+  requestedDoctorId?: string;
+  affiliationStatus?: AffiliationStatus;
   doctors?: Doctor[];
   createdAt: Date;
   updatedAt: Date;
@@ -88,6 +118,7 @@ export interface Appointment {
   adminApprovedAt?: Date;
   doctorRejectionReason?: string;
   adminRejectionReason?: string;
+  cancellationReason?: string;
   requestedBy?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -169,10 +200,14 @@ export enum MedicationStatus {
 
 export interface MedicalCondition {
   id: string;
-  patientId: string;
+  medicalRecordId: string;
   name: string;
-  diagnosedDate: Date;
+  description?: string;
   status: MedicalConditionStatus;
+  severity?: 'MILD' | 'MODERATE' | 'SEVERE' | 'CRITICAL';
+  diagnosedDate?: Date;
+  resolvedDate?: Date;
+  treatment?: string;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -180,12 +215,11 @@ export interface MedicalCondition {
 
 export interface Allergy {
   id: string;
-  patientId: string;
+  medicalRecordId: string;
   allergen: string;
   type: AllergyType;
   severity: AllergySeverity;
   reaction?: string;
-  diagnosedDate?: Date;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -193,15 +227,14 @@ export interface Allergy {
 
 export interface Medication {
   id: string;
-  patientId: string;
+  medicalRecordId: string;
   name: string;
-  dosage: string;
-  frequency: string;
-  startDate: Date;
+  dosage?: string;
+  frequency?: string;
+  startDate?: Date;
   endDate?: Date;
   status: MedicationStatus;
   prescribedBy?: string;
-  reason?: string;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -209,13 +242,13 @@ export interface Medication {
 
 export interface Vaccination {
   id: string;
-  patientId: string;
-  vaccine: string;
-  dateAdministered: Date;
+  medicalRecordId: string;
+  name: string;
+  dateGiven?: Date;
+  manufacturer?: string;
+  lotNumber?: string;
+  nextDoseDate?: Date;
   administeredBy?: string;
-  nextDueDate?: Date;
-  batchNumber?: string;
-  site?: string;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -267,6 +300,25 @@ export interface SystemSetting {
   label: string;
   description?: string;
   category: string;
+  updatedAt: Date;
+}
+
+export interface Consultation {
+  id: string;
+  appointmentId: string;
+  appointment?: Appointment;
+  patientId: string;
+  patient?: Patient;
+  doctorId: string;
+  doctor?: Doctor;
+  chiefComplaint?: string;
+  diagnosis?: string;
+  notes?: string;
+  treatment?: string;
+  prescriptions?: string;
+  followUpDate?: Date;
+  followUpNotes?: string;
+  createdAt: Date;
   updatedAt: Date;
 }
 

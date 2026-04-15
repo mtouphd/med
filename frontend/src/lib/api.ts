@@ -3,6 +3,7 @@ import {
   AuthResponse,
   User,
   Doctor,
+  DoctorSettings,
   Appointment,
   DashboardStats,
   MedicalRecord,
@@ -40,10 +41,15 @@ export const auth = {
   login: (data: { email: string; password: string }) =>
     api.post<AuthResponse>('/auth/login', data),
   getProfile: () => api.get<User>('/auth/profile'),
+  getPublicDoctors: () => api.get<{ id: string; firstName: string; lastName: string; specialty: string }[]>('/auth/doctors'),
 };
 
 export const doctors = {
   getAll: () => api.get<Doctor[]>('/doctors'),
+  search: (params: { city?: string; specialty?: string; lat?: number; lng?: number; radius?: number }) =>
+    api.get<Doctor[]>('/doctors/search', { params }),
+  getMyProfile: () => api.get<Doctor>('/doctors/me'),
+  updateMyProfile: (data: any) => api.patch<Doctor>('/doctors/me', data),
   getById: (id: string) => api.get<Doctor>(`/doctors/${id}`),
   create: (data: any) => api.post<Doctor>('/doctors', data),
   update: (id: string, data: any) => api.put<Doctor>(`/doctors/${id}`, data),
@@ -62,12 +68,17 @@ export const doctors = {
   // Family patients
   getFamilyPatients: (doctorId: string) => api.get(`/doctors/${doctorId}/family-patients`),
   getMyFamilyPatients: () => api.get('/doctors/me/family-patients'),
+  getMyPatients: () => api.get('/doctors/me/patients'),
   // Statistics
   getStatistics: (doctorId: string) => api.get(`/doctors/${doctorId}/statistics`),
   getMyStatistics: () => api.get('/doctors/me/statistics'),
   // Pending appointments
   getPendingAppointments: (doctorId: string) => api.get(`/doctors/${doctorId}/pending-appointments`),
   getMyPendingAppointments: () => api.get('/doctors/me/pending-appointments'),
+  // Settings
+  getMySettings: () => api.get<DoctorSettings>('/doctors/me/settings'),
+  updateMySettings: (data: Partial<{ maxAppointmentsPerDay: number | null; minAppointmentDuration: number | null; maxAppointmentDuration: number | null; maxFamilyPatients: number | null }>) =>
+    api.patch<DoctorSettings>('/doctors/me/settings', data),
   // Assistants
   getAssistants: (doctorId: string) => api.get<Assistant[]>(`/doctors/${doctorId}/assistants`),
   getMyAssistants: () => api.get<Assistant[]>('/doctors/me/assistants'),
@@ -99,7 +110,9 @@ export const appointments = {
   approveByAdmin: (id: string) => api.patch(`/appointments/${id}/approve/admin`),
   rejectByDoctor: (id: string, reason: string) => api.patch(`/appointments/${id}/reject/doctor`, { reason }),
   rejectByAdmin: (id: string, reason: string) => api.patch(`/appointments/${id}/reject/admin`, { reason }),
-  cancel: (id: string) => api.put(`/appointments/${id}/cancel`),
+  cancel: (id: string, reason?: string) => api.put(`/appointments/${id}/cancel`, { reason }),
+  complete: (id: string, data: { notes?: string; medications?: string }) =>
+    api.patch(`/appointments/${id}/complete`, data),
 };
 
 export const patients = {
@@ -181,6 +194,21 @@ export const medicalRecords = {
     api.post<Vaccination>(`/patients/${patientId}/medical-record/vaccinations`, data),
 };
 
+// Consultations API
+export const consultations = {
+  /** Sauvegarder (brouillon) sans terminer le RDV */
+  save: (data: { appointmentId: string; chiefComplaint?: string; diagnosis?: string; notes?: string; treatment?: string; prescriptions?: string; followUpDate?: string; followUpNotes?: string }) =>
+    api.post('/consultations', data),
+  /** Terminer le RDV + sauvegarder la consultation */
+  complete: (appointmentId: string, data: { chiefComplaint?: string; diagnosis?: string; notes?: string; treatment?: string; prescriptions?: string; followUpDate?: string; followUpNotes?: string }) =>
+    api.post(`/consultations/complete/${appointmentId}`, data),
+  update: (id: string, data: any) => api.patch(`/consultations/${id}`, data),
+  getByAppointment: (appointmentId: string) => api.get(`/consultations/appointment/${appointmentId}`),
+  getByPatient: (patientId: string) => api.get(`/consultations/patient/${patientId}`),
+  getMy: () => api.get('/consultations/my'),
+  getMyDoctor: () => api.get('/consultations/doctor/my'),
+};
+
 // Family Doctor Requests API
 export const familyDoctorRequests = {
   create: (data: { doctorId: string; requestReason?: string }) =>
@@ -225,6 +253,11 @@ export const assistants = {
   // Current assistant
   getMyProfile: () => api.get<Assistant>('/assistants/me'),
   getMyDoctors: () => api.get<Doctor[]>('/assistants/me/doctors'),
+  getMyPatients: () => api.get('/assistants/me/patients'),
+  // Affiliation workflow
+  getPendingRequests: () => api.get<Assistant[]>('/assistants/pending/doctor'),
+  approveAffiliation: (id: string) => api.patch<Assistant>(`/assistants/${id}/approve`),
+  rejectAffiliation: (id: string) => api.patch<Assistant>(`/assistants/${id}/reject`),
   // Doctor assignments
   getDoctors: (assistantId: string) => api.get<Doctor[]>(`/assistants/${assistantId}/doctors`),
   assignToDoctor: (assistantId: string, doctorId: string) =>

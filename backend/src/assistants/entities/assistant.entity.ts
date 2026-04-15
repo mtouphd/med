@@ -12,6 +12,12 @@ import {
 import { User } from '../../users/entities/user.entity';
 import { Doctor } from '../../doctors/entities/doctor.entity';
 
+export enum AffiliationStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}
+
 @Entity('assistants')
 export class Assistant {
   @PrimaryGeneratedColumn('uuid')
@@ -32,6 +38,17 @@ export class Assistant {
 
   @Column({ default: true })
   isActive: boolean;
+
+  // Affiliation request made during registration
+  @Column({ nullable: true })
+  requestedDoctorId: string;
+
+  @Column({
+    type: 'enum',
+    enum: AffiliationStatus,
+    default: AffiliationStatus.PENDING,
+  })
+  affiliationStatus: AffiliationStatus;
 
   // Many-to-many relationship with doctors
   @ManyToMany(() => Doctor, (doctor) => doctor.assistants, { eager: true })

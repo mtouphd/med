@@ -45,7 +45,7 @@ VALUES (
   30,
   true,
   50,
-  '{"monday":{"start":"09:00","end":"17:00","enabled":true},"tuesday":{"start":"09:00","end":"17:00","enabled":true},"wednesday":{"start":"09:00","end":"17:00","enabled":true},"thursday":{"start":"09:00","end":"17:00","enabled":true},"friday":{"start":"09:00","end":"15:00","enabled":true},"saturday":{"start":"00:00","end":"00:00","enabled":false},"sunday":{"start":"00:00","end":"00:00","enabled":false}}',
+  '{"monday":{"start":"09:00","end":"17:00","enabled":true},"tuesday":{"start":"09:00","end":"17:00","enabled":true},"wednesday":{"start":"09:00","end":"17:00","enabled":true},"thursday":{"start":"09:00","end":"17:00","enabled":true},"friday":{"start":"09:00","end":"15:00","enabled":true},"saturday":{"start":"09:00","end":"17:00","enabled":true},"sunday":{"start":"09:00","end":"17:00","enabled":true}}',
   NOW(),
   NOW()
 );
@@ -75,7 +75,7 @@ VALUES (
   30,
   true,
   50,
-  '{"monday":{"start":"09:00","end":"17:00","enabled":true},"tuesday":{"start":"09:00","end":"17:00","enabled":true},"wednesday":{"start":"09:00","end":"17:00","enabled":true},"thursday":{"start":"09:00","end":"17:00","enabled":true},"friday":{"start":"09:00","end":"15:00","enabled":true},"saturday":{"start":"00:00","end":"00:00","enabled":false},"sunday":{"start":"00:00","end":"00:00","enabled":false}}',
+  '{"monday":{"start":"09:00","end":"17:00","enabled":true},"tuesday":{"start":"09:00","end":"17:00","enabled":true},"wednesday":{"start":"09:00","end":"17:00","enabled":true},"thursday":{"start":"09:00","end":"17:00","enabled":true},"friday":{"start":"09:00","end":"15:00","enabled":true},"saturday":{"start":"09:00","end":"17:00","enabled":true},"sunday":{"start":"09:00","end":"17:00","enabled":true}}',
   NOW(),
   NOW()
 );
@@ -105,7 +105,7 @@ VALUES (
   30,
   true,
   50,
-  '{"monday":{"start":"09:00","end":"17:00","enabled":true},"tuesday":{"start":"09:00","end":"17:00","enabled":true},"wednesday":{"start":"09:00","end":"17:00","enabled":true},"thursday":{"start":"09:00","end":"17:00","enabled":true},"friday":{"start":"09:00","end":"15:00","enabled":true},"saturday":{"start":"00:00","end":"00:00","enabled":false},"sunday":{"start":"00:00","end":"00:00","enabled":false}}',
+  '{"monday":{"start":"09:00","end":"17:00","enabled":true},"tuesday":{"start":"09:00","end":"17:00","enabled":true},"wednesday":{"start":"09:00","end":"17:00","enabled":true},"thursday":{"start":"09:00","end":"17:00","enabled":true},"friday":{"start":"09:00","end":"15:00","enabled":true},"saturday":{"start":"09:00","end":"17:00","enabled":true},"sunday":{"start":"09:00","end":"17:00","enabled":true}}',
   NOW(),
   NOW()
 );
@@ -135,7 +135,7 @@ VALUES (
   30,
   true,
   NULL,
-  '{"monday":{"start":"09:00","end":"17:00","enabled":true},"tuesday":{"start":"09:00","end":"17:00","enabled":true},"wednesday":{"start":"09:00","end":"17:00","enabled":true},"thursday":{"start":"09:00","end":"17:00","enabled":true},"friday":{"start":"09:00","end":"15:00","enabled":true},"saturday":{"start":"00:00","end":"00:00","enabled":false},"sunday":{"start":"00:00","end":"00:00","enabled":false}}',
+  '{"monday":{"start":"09:00","end":"17:00","enabled":true},"tuesday":{"start":"09:00","end":"17:00","enabled":true},"wednesday":{"start":"09:00","end":"17:00","enabled":true},"thursday":{"start":"09:00","end":"17:00","enabled":true},"friday":{"start":"09:00","end":"15:00","enabled":true},"saturday":{"start":"09:00","end":"17:00","enabled":true},"sunday":{"start":"09:00","end":"17:00","enabled":true}}',
   NOW(),
   NOW()
 );
@@ -165,7 +165,7 @@ VALUES (
   30,
   true,
   NULL,
-  '{"monday":{"start":"09:00","end":"17:00","enabled":true},"tuesday":{"start":"09:00","end":"17:00","enabled":true},"wednesday":{"start":"09:00","end":"17:00","enabled":true},"thursday":{"start":"09:00","end":"17:00","enabled":true},"friday":{"start":"09:00","end":"15:00","enabled":true},"saturday":{"start":"00:00","end":"00:00","enabled":false},"sunday":{"start":"00:00","end":"00:00","enabled":false}}',
+  '{"monday":{"start":"09:00","end":"17:00","enabled":true},"tuesday":{"start":"09:00","end":"17:00","enabled":true},"wednesday":{"start":"09:00","end":"17:00","enabled":true},"thursday":{"start":"09:00","end":"17:00","enabled":true},"friday":{"start":"09:00","end":"15:00","enabled":true},"saturday":{"start":"09:00","end":"17:00","enabled":true},"sunday":{"start":"09:00","end":"17:00","enabled":true}}',
   NOW(),
   NOW()
 );
